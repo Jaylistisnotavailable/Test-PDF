@@ -187,12 +187,16 @@ export const undoableMiddleware:Middleware=storeAPI=>next=>action=>{
 
 let transactionBefore:Shape[]|null=null;
 
-function isHistoryAction(a:UnknownAction){
-  return [
-    drawingSlice.actions.addShape.type,drawingSlice.actions.updateShape.type,
-    drawingSlice.actions.deleteShape.type,drawingSlice.actions.deleteSelected.type,
-    drawingSlice.actions.pasteClipboard.type,drawingSlice.actions.importShapes.type,
-  ].includes(String(a.type));
+function isHistoryAction(a: UnknownAction) {
+  const historyTypes: string[] = [
+    drawingSlice.actions.addShape.type,
+    drawingSlice.actions.updateShape.type,
+    drawingSlice.actions.deleteShape.type,
+    drawingSlice.actions.deleteSelected.type,
+    drawingSlice.actions.pasteClipboard.type,
+    drawingSlice.actions.importShapes.type,
+  ];
+  return historyTypes.includes(a.type as string);
 }
 
 export const {
