@@ -1,4 +1,4 @@
-import type { PagePoint } from '@/core/coordinate';
+import type { PagePoint } from '@/core/coordinate/coordinateTypes';
 import type { StructuralElement } from '../elements/elementTypes';
 
 export interface Bounds { minX: number; minY: number; maxX: number; maxY: number; }
