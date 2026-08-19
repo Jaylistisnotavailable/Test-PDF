@@ -1,0 +1,6 @@
+//src/App.tsx
+import { EditorShell } from "@/components/editor/EditorShell";
+
+export default function App() {
+  return <EditorShell />;
+}
