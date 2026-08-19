@@ -1,4 +1,4 @@
-import type { PagePoint } from '@/core/coordinate';
+import type { PagePoint } from '@/core/coordinate/coordinateTypes';
 
 export type StructuralElementType =
   | 'column'
