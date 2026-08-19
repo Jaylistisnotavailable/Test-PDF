@@ -27,7 +27,10 @@ export interface CoordinateTransform {
   offsetY: number;
 }
 
-export interface PagePoint extends Point {}
+export interface PagePoint extends Point {
+  x: number;
+  y: number;
+}
 
 export interface ScreenPoint extends Point {}
 
