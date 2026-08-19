@@ -70,11 +70,11 @@ export const drawingSlice=createSlice({
   name:'drawing', initialState,
   reducers:{
     setActiveTool:(s,a:PayloadAction<ToolType>)=>{s.activeTool=a.payload;if(a.payload!=='select')s.selectedShapeIds=[];},
-    addShape:(s,a:PayloadAction<Shape>)=>{
-      const now=new Date().toISOString();
-      const shape={...a.payload,id:nanoid(),createdAt:now,updatedAt:now} as Shape;
+    addShape: (s, a: PayloadAction<Omit<Shape, 'id' | 'createdAt' | 'updatedAt'>>) => {
+      const now = new Date().toISOString();
+      const shape = { ...a.payload, id: nanoid(), createdAt: now, updatedAt: now } as Shape;
       s.shapes.push(shape);
-      s.selectedShapeIds=[shape.id];
+      s.selectedShapeIds = [shape.id];
     },
     updateShape:(s,a:PayloadAction<{id:string;changes:Partial<Shape>}>)=>{
       const shape=s.shapes.find(x=>x.id===a.payload.id);
