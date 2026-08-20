@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/app/store/hooks';
 import { setCurrentPage } from '@/app/store/slices/pdfSlice';
 import { setScaleRatio } from '@/app/store/slices/drawingSlice';
+import { setPageScale, setPageUnit } from '@/app/store/slices/pageCoordinateSlice';
 import { setCurrentDrawingScale } from '@/core/coordinate/engineeringScale';
 import { usePdfDocument } from '@/features/pdf-viewer/usePdfDocument';
 import { Button } from '@/components/ui/button';
@@ -42,9 +43,22 @@ export function PageSidebar() {
       // Keep renderer-only helpers (which cannot access Redux directly) in
       // sync with the Redux source of truth before React redraws the canvas.
       setCurrentDrawingScale(num, den);
+
+      // Update drawing slice state
       dispatch(setScaleRatio({ num, den, unit: scaleUnitVal }));
+
+      // FIX: Sync to pageCoordinate slice for current page
+      dispatch(setPageScale({
+        pageIndex: currentPage,
+        numerator: num,
+        denominator: den,
+      }));
+      dispatch(setPageUnit({
+        pageIndex: currentPage,
+        unit: scaleUnitVal,
+      }));
     }
-  }, [scaleNum, scaleDen, scaleUnitVal, dispatch]);
+  }, [scaleNum, scaleDen, scaleUnitVal, currentPage, dispatch]);
 
   // The PDF page itself is not assumed to be A4. PdfCanvas/PDF.js owns the
   // actual page dimensions. This list intentionally shows page numbers only.

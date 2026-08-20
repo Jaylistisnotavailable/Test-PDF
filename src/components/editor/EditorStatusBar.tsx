@@ -6,20 +6,19 @@ import { setScale, setCurrentPage } from '@/app/store/slices/pdfSlice';
 import {
   setOriginMode,
   selectPageCoordinateSystem,
+  clearPageOrigin,
 } from '@/app/store/slices/pageCoordinateSlice';
-
 import {
   subscribeCursorCoordinate,
   type CursorCoordinateEvent,
 } from '@/core/coordinate/coordinateEvents';
-
 import {
   ZoomIn,
   ZoomOut,
   Maximize,
   Crosshair,
+  X,
 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 
 export function EditorStatusBar({
@@ -30,20 +29,18 @@ export function EditorStatusBar({
   onFitPage?: () => void;
 }) {
   const dispatch = useAppDispatch();
-
   const {
     currentPage,
     totalPages,
     scale,
   } = useAppSelector((s) => s.pdf);
-
   const pageCoordinateSystem = useAppSelector((state) =>
     selectPageCoordinateSystem(
       state,
       currentPage
     )
   );
-
+  const originMode = useAppSelector((state) => state.pageCoordinate.originMode);
   const [cursor, setCursor] =
     useState<CursorCoordinateEvent | null>(null);
 
@@ -73,14 +70,13 @@ export function EditorStatusBar({
 
   const coordinateUnit =
     pageCoordinateSystem.unit;
-
   const scaleText =
     pageCoordinateSystem.scaleNumerator === 1
       ? `1:${pageCoordinateSystem.scaleDenominator}`
       : `${pageCoordinateSystem.scaleNumerator}:${pageCoordinateSystem.scaleDenominator}`;
 
   /*
-   * Number of decimal places for engineering coordinates.
+   * Number of decimal places for engineering coordinate.
    */
   const engineeringDecimals =
     coordinateUnit === 'm'
@@ -101,7 +97,6 @@ export function EditorStatusBar({
     cursor
       ? cursor.pagePoint.x
       : null;
-
   const pageY =
     cursor
       ? cursor.pagePoint.y
@@ -122,11 +117,14 @@ export function EditorStatusBar({
     cursor
       ? cursor.engineeringPoint.x
       : null;
-
   const engineeringY =
     cursor
       ? cursor.engineeringPoint.y
       : null;
+
+  const handleCancelOrigin = () => {
+    dispatch(clearPageOrigin({ pageIndex: currentPage }));
+  };
 
   return (
     <footer
@@ -146,7 +144,7 @@ export function EditorStatusBar({
     >
       {/* =========================================================
           LEFT SIDE
-      ========================================================= */}
+          ========================================================= */}
       <div
         className="
           flex
@@ -160,7 +158,6 @@ export function EditorStatusBar({
         <span className="whitespace-nowrap">
           Page {currentPage} of {totalPages || '--'}
         </span>
-
         {/* Page navigation */}
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
@@ -181,7 +178,6 @@ export function EditorStatusBar({
             >
               ‹
             </Button>
-
             <Button
               variant="ghost"
               size="icon"
@@ -201,12 +197,10 @@ export function EditorStatusBar({
             </Button>
           </div>
         )}
-
         <div className="w-px h-4 bg-border" />
-
         {/* =====================================================
             DRAWING SCALE
-        ===================================================== */}
+            ===================================================== */}
         <span
           className="
             font-mono
@@ -218,10 +212,9 @@ export function EditorStatusBar({
             {scaleText}
           </strong>
         </span>
-
         {/* =====================================================
             SET ORIGIN
-        ===================================================== */}
+            ===================================================== */}
         <Button
           variant="ghost"
           size="sm"
@@ -242,12 +235,31 @@ export function EditorStatusBar({
           Set Origin
         </Button>
 
-        <div className="w-px h-4 bg-border" />
+        {/* =====================================================
+            CANCEL ORIGIN BUTTON (NEW)
+            ===================================================== */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="
+            h-6
+            text-xs
+            px-2
+            gap-1
+            whitespace-nowrap
+          "
+          disabled={!originMode}
+          onClick={handleCancelOrigin}
+          title="取消设置原点"
+        >
+          <X className="w-3.5 h-3.5" />
+          取消
+        </Button>
 
+        <div className="w-px h-4 bg-border" />
         {/* =====================================================
             PDF PAGE COORDINATES
-        ===================================================== */}
-
+            ===================================================== */}
         <span
           className="
             font-mono
@@ -261,7 +273,6 @@ export function EditorStatusBar({
             : '—'}
           {' pt'}
         </span>
-
         <span
           className="
             font-mono
@@ -275,13 +286,10 @@ export function EditorStatusBar({
             : '—'}
           {' pt'}
         </span>
-
         <div className="w-px h-4 bg-border" />
-
         {/* =====================================================
             ENGINEERING COORDINATES
-        ===================================================== */}
-
+            ===================================================== */}
         <span
           className="
             font-mono
@@ -299,7 +307,6 @@ export function EditorStatusBar({
           {' '}
           {coordinateUnit}
         </span>
-
         <span
           className="
             font-mono
@@ -321,7 +328,7 @@ export function EditorStatusBar({
 
       {/* =========================================================
           RIGHT SIDE
-      ========================================================= */}
+          ========================================================= */}
       <div
         className="
           flex
@@ -339,7 +346,6 @@ export function EditorStatusBar({
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </Button>
-
         {/* Zoom percentage */}
         <span
           className="
@@ -353,7 +359,6 @@ export function EditorStatusBar({
           )}
           %
         </span>
-
         {/* Zoom In */}
         <Button
           variant="ghost"
@@ -363,7 +368,6 @@ export function EditorStatusBar({
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </Button>
-
         <div
           className="
             w-px
@@ -372,7 +376,6 @@ export function EditorStatusBar({
             mx-1
           "
         />
-
         {/* Fit Width */}
         <Button
           variant="ghost"
@@ -386,7 +389,6 @@ export function EditorStatusBar({
         >
           Fit Width
         </Button>
-
         {/* Fit Page */}
         <Button
           variant="ghost"
@@ -400,7 +402,6 @@ export function EditorStatusBar({
         >
           Fit Page
         </Button>
-
         {/* Reset zoom */}
         <Button
           variant="ghost"
