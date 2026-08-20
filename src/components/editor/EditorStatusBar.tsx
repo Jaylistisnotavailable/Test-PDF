@@ -3,76 +3,198 @@
 import { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/app/store/hooks';
 import { setScale, setCurrentPage } from '@/app/store/slices/pdfSlice';
-import { setOriginMode, selectPageCoordinateSystem } from '@/app/store/slices/pageCoordinateSlice';
+import {
+  setOriginMode,
+  selectPageCoordinateSystem,
+} from '@/app/store/slices/pageCoordinateSlice';
+
 import {
   subscribeCursorCoordinate,
   type CursorCoordinateEvent,
 } from '@/core/coordinate/coordinateEvents';
 
-import { ZoomIn, ZoomOut, Maximize, Crosshair } from 'lucide-react';
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Crosshair,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
-export function EditorStatusBar({ onFitWidth, onFitPage}: { onFitWidth?: () => void; onFitPage?: () => void}) {
+export function EditorStatusBar({
+  onFitWidth,
+  onFitPage,
+}: {
+  onFitWidth?: () => void;
+  onFitPage?: () => void;
+}) {
   const dispatch = useAppDispatch();
 
-  const { currentPage, totalPages, scale } = useAppSelector((s) => s.pdf);
+  const {
+    currentPage,
+    totalPages,
+    scale,
+  } = useAppSelector((s) => s.pdf);
 
   const pageCoordinateSystem = useAppSelector((state) =>
-    selectPageCoordinateSystem(state, currentPage)
+    selectPageCoordinateSystem(
+      state,
+      currentPage
+    )
   );
 
-  const [cursor, setCursor] = useState<CursorCoordinateEvent | null>(null);
+  const [cursor, setCursor] =
+    useState<CursorCoordinateEvent | null>(null);
 
   useEffect(() => {
-    return subscribeCursorCoordinate(
-      (nextCursor) => {
-        if (!nextCursor) {
-          setCursor(null);
-          return;
-        }
-
-        console.log(
-          'CURSOR:',
-          nextCursor.pagePoint,
-          nextCursor.engineeringPoint,
-        );
-
-        setCursor(nextCursor);
-      },
-    );
+    return subscribeCursorCoordinate(setCursor);
   }, []);
 
-  const zoomIn = () => dispatch(setScale(Math.min(4.0, scale + 0.25)));
-  const zoomOut = () => dispatch(setScale(Math.max(0.25, scale - 0.25)));
+  const zoomIn = () =>
+    dispatch(
+      setScale(
+        Math.min(
+          4.0,
+          scale + 0.25
+        )
+      )
+    );
 
-  const coordinateUnit = pageCoordinateSystem.unit;
+  const zoomOut = () =>
+    dispatch(
+      setScale(
+        Math.max(
+          0.25,
+          scale - 0.25
+        )
+      )
+    );
+
+  const coordinateUnit =
+    pageCoordinateSystem.unit;
 
   const scaleText =
     pageCoordinateSystem.scaleNumerator === 1
       ? `1:${pageCoordinateSystem.scaleDenominator}`
       : `${pageCoordinateSystem.scaleNumerator}:${pageCoordinateSystem.scaleDenominator}`;
 
+  /*
+   * Number of decimal places for engineering coordinates.
+   */
+  const engineeringDecimals =
+    coordinateUnit === 'm'
+      ? 3
+      : coordinateUnit === 'cm'
+        ? 2
+        : 1;
+
+  /*
+   * PDF page coordinates are stored in PDF points.
+   *
+   * These are NOT engineering coordinates.
+   *
+   * They represent the cursor position in the
+   * persistent PDF/page coordinate system.
+   */
+  const pageX =
+    cursor
+      ? cursor.pagePoint.x
+      : null;
+
+  const pageY =
+    cursor
+      ? cursor.pagePoint.y
+      : null;
+
+  /*
+   * Engineering coordinates:
+   *
+   * - based on the user-defined Origin
+   * - based on the current drawing scale
+   * - X positive to the right
+   * - Y positive upward
+   *
+   * These values are already calculated by
+   * pagePointToEngineeringUnit().
+   */
+  const engineeringX =
+    cursor
+      ? cursor.engineeringPoint.x
+      : null;
+
+  const engineeringY =
+    cursor
+      ? cursor.engineeringPoint.y
+      : null;
+
   return (
-    <footer className="h-8 flex items-center justify-between px-3 bg-editor-toolbar border-t border-border text-xs text-muted-foreground shrink-0">
-      <div className="flex items-center gap-4 min-w-0">
-        <span>
+    <footer
+      className="
+        h-8
+        flex
+        items-center
+        justify-between
+        px-3
+        bg-editor-toolbar
+        border-t
+        border-border
+        text-xs
+        text-muted-foreground
+        shrink-0
+      "
+    >
+      {/* =========================================================
+          LEFT SIDE
+      ========================================================= */}
+      <div
+        className="
+          flex
+          items-center
+          gap-3
+          min-w-0
+          overflow-hidden
+        "
+      >
+        {/* Page */}
+        <span className="whitespace-nowrap">
           Page {currentPage} of {totalPages || '--'}
         </span>
 
+        {/* Page navigation */}
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
               onClick={() =>
-                dispatch(setCurrentPage(Math.max(1, currentPage - 1)))
+                dispatch(
+                  setCurrentPage(
+                    Math.max(
+                      1,
+                      currentPage - 1
+                    )
+                  )
+                )
               }
             >
               ‹
             </Button>
 
-            <Button variant="ghost" size="icon" className="h-6 w-6"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
               onClick={() =>
-                dispatch(setCurrentPage(Math.min(totalPages, currentPage + 1)))
+                dispatch(
+                  setCurrentPage(
+                    Math.min(
+                      totalPages,
+                      currentPage + 1
+                    )
+                  )
+                )
               }
             >
               ›
@@ -82,13 +204,39 @@ export function EditorStatusBar({ onFitWidth, onFitPage}: { onFitWidth?: () => v
 
         <div className="w-px h-4 bg-border" />
 
-        <span className="font-mono whitespace-nowrap">
-          Scale <strong>{scaleText}</strong>
+        {/* =====================================================
+            DRAWING SCALE
+        ===================================================== */}
+        <span
+          className="
+            font-mono
+            whitespace-nowrap
+          "
+        >
+          Scale{' '}
+          <strong>
+            {scaleText}
+          </strong>
         </span>
 
+        {/* =====================================================
+            SET ORIGIN
+        ===================================================== */}
         <Button
-          variant="ghost" size="sm" className="h-6 text-xs px-2 gap-1"
-          onClick={() => dispatch(setOriginMode(true))}
+          variant="ghost"
+          size="sm"
+          className="
+            h-6
+            text-xs
+            px-2
+            gap-1
+            whitespace-nowrap
+          "
+          onClick={() =>
+            dispatch(
+              setOriginMode(true)
+            )
+          }
         >
           <Crosshair className="w-3.5 h-3.5" />
           Set Origin
@@ -96,59 +244,173 @@ export function EditorStatusBar({ onFitWidth, onFitPage}: { onFitWidth?: () => v
 
         <div className="w-px h-4 bg-border" />
 
-        <span className="font-mono whitespace-nowrap">
-          X:{' '}
-          {cursor ? cursor.engineeringPoint.x.toFixed(
-                coordinateUnit === 'm' ? 3 : coordinateUnit === 'cm' ? 2 : 1
+        {/* =====================================================
+            PDF PAGE COORDINATES
+        ===================================================== */}
+
+        <span
+          className="
+            font-mono
+            whitespace-nowrap
+          "
+          title="PDF page X coordinate"
+        >
+          PDF X:{' '}
+          {pageX !== null
+            ? pageX.toFixed(2)
+            : '—'}
+          {' pt'}
+        </span>
+
+        <span
+          className="
+            font-mono
+            whitespace-nowrap
+          "
+          title="PDF page Y coordinate"
+        >
+          PDF Y:{' '}
+          {pageY !== null
+            ? pageY.toFixed(2)
+            : '—'}
+          {' pt'}
+        </span>
+
+        <div className="w-px h-4 bg-border" />
+
+        {/* =====================================================
+            ENGINEERING COORDINATES
+        ===================================================== */}
+
+        <span
+          className="
+            font-mono
+            whitespace-nowrap
+            font-medium
+          "
+          title="Engineering X coordinate based on current origin and drawing scale"
+        >
+          ENG X:{' '}
+          {engineeringX !== null
+            ? engineeringX.toFixed(
+                engineeringDecimals
               )
-            : '—'}{' '}
+            : '—'}
+          {' '}
           {coordinateUnit}
         </span>
 
-        <span className="font-mono whitespace-nowrap">
-          Y:{' '}
-          {cursor ? cursor.engineeringPoint.y.toFixed(
-                coordinateUnit === 'm' ? 3
-                  : coordinateUnit === 'cm' ? 2 : 1
+        <span
+          className="
+            font-mono
+            whitespace-nowrap
+            font-medium
+          "
+          title="Engineering Y coordinate based on current origin and drawing scale"
+        >
+          ENG Y:{' '}
+          {engineeringY !== null
+            ? engineeringY.toFixed(
+                engineeringDecimals
               )
-            : '—'}{' '}
+            : '—'}
+          {' '}
           {coordinateUnit}
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-6 w-6"
+      {/* =========================================================
+          RIGHT SIDE
+      ========================================================= */}
+      <div
+        className="
+          flex
+          items-center
+          gap-2
+          shrink-0
+        "
+      >
+        {/* Zoom Out */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
           onClick={zoomOut}
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </Button>
 
-        <span className="w-12 text-center font-mono">
-          {Math.round(scale * 100)}%
+        {/* Zoom percentage */}
+        <span
+          className="
+            w-12
+            text-center
+            font-mono
+          "
+        >
+          {Math.round(
+            scale * 100
+          )}
+          %
         </span>
 
-        <Button variant="ghost" size="icon" className="h-6 w-6"
+        {/* Zoom In */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
           onClick={zoomIn}
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </Button>
 
-        <div className="w-px h-3 bg-border mx-1" />
+        <div
+          className="
+            w-px
+            h-3
+            bg-border
+            mx-1
+          "
+        />
 
-        <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+        {/* Fit Width */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="
+            h-6
+            text-xs
+            px-2
+          "
           onClick={onFitWidth}
         >
           Fit Width
         </Button>
 
-        <Button variant="ghost" size="sm" className="h-6 text-xs px-2"
+        {/* Fit Page */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="
+            h-6
+            text-xs
+            px-2
+          "
           onClick={onFitPage}
         >
           Fit Page
         </Button>
 
-        <Button variant="ghost" size="icon" className="h-6 w-6"
-          onClick={() => dispatch(setScale(1.0))}
+        {/* Reset zoom */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() =>
+            dispatch(
+              setScale(1.0)
+            )
+          }
         >
           <Maximize className="w-3.5 h-3.5" />
         </Button>
