@@ -58,7 +58,7 @@ export function PageSidebar() {
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
         <div>
           <p className="text-sm font-semibold tracking-tight">PDF Canvas</p>
-          <p className="text-xs text-gray-500">PDF 标注工具</p>
+          <p className="text-xs text-gray-500">PDF Annotation Tool</p>
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export function PageSidebar() {
           onClick={() => fileInputRef.current?.click()}
         >
           <FolderOpen className="w-3.5 h-3.5" />
-          打开 PDF 文件
+          Open PDF File
         </Button>
       </div>
 
@@ -84,11 +84,11 @@ export function PageSidebar() {
         {fileName && (
           <section className="px-4 py-3 border-b border-gray-100">
             <SectionHeader icon={<Info className="w-3.5 h-3.5" />} title="文件信息" />
-            <InfoRow label="文件名" value={fileName} mono />
-            <InfoRow label="总页数" value={`${totalPages} 页`} mono />
-            <InfoRow label="PDF 显示缩放" value={`${Math.round(displayZoom * 100)}%`} mono />
+            <InfoRow label="File Name" value={fileName} mono />
+            <InfoRow label="Total Pages" value={`${totalPages} pages`} mono />
+            <InfoRow label="PDF Zoom Scale" value={`${Math.round(displayZoom * 100)}%`} mono />
             <p className="mt-1 text-[11px] leading-4 text-gray-400">
-              这是屏幕显示缩放，不是图纸比例；修改它不会改变构件的真实长度。
+              Screen display zoom, not drawing scale. Not change the length of the components.
             </p>
           </section>
         )}
