@@ -1,68 +1,171 @@
-import { BaseTool, CanvasEvent, ToolContext } from './BaseTool';
-import { makeBase, ensureLabel } from './structuralToolUtils';
-import { getStructuralDefaults } from '../elements/elementDefaults';
+// src/features/drawing/tools/PortalFrameTool.ts
 
-export class PortalFrameTool extends BaseTool {
-  cursor = 'crosshair';
-  private start: { x: number; y: number } | null = null;
+import {
+  BaseTool,
+  CanvasEvent,
+  ToolContext,
+} from './BaseTool';
 
-  onMouseDown(e: CanvasEvent, ctx: ToolContext) {
-    if (this.start) return;
-    this.start = { x: e.x, y: e.y };
+import {
+  getStructuralDefaults,
+} from '../elements/elementDefaults';
 
-    const scale = ctx.getState().drawing.scaleDenominator;
-    const d = getStructuralDefaults(scale, ctx.getState().drawing.scaleNumerator).portalFrame;
-    const label = ensureLabel(ctx, 'portalFrame');
+import {
+  makeBase,
+  ensureLabel,
+} from './structuralToolUtils';
+
+export class PortalFrameTool
+  extends BaseTool {
+
+  cursor =
+    'crosshair';
+
+  private start:
+    | {
+        x: number;
+        y: number;
+      }
+    | null = null;
+
+  onMouseDown(
+    e: CanvasEvent,
+    ctx: ToolContext,
+  ) {
+    if (this.start) {
+      return;
+    }
+
+    this.start = {
+      x: e.x,
+      y: e.y,
+    };
+
+    const state =
+      ctx.getState();
+
+    const d =
+      getStructuralDefaults(
+        state.drawing
+          .scaleDenominator,
+
+        state.drawing
+          .scaleNumerator,
+      ).portalFrame;
+
+    const label =
+      ensureLabel(
+        ctx,
+        'portalFrame',
+      );
 
     ctx.setTempShape({
-      ...makeBase(ctx, 'portalFrame', {
-        start: e,
-        end: e,
-        height: d.height,
-        columnWidth: d.columnWidth,
-        columnDepth: d.columnDepth,
-        beamWidth: d.beamWidth,
-        beamDepth: d.beamDepth,
-      }),
+      ...makeBase(
+        ctx,
+        'portalFrame',
+        {
+          start: e,
+
+          end: e,
+
+          height:
+            d.height,
+
+          columnWidth:
+            d.columnWidth,
+
+          columnDepth:
+            d.columnDepth,
+
+          beamWidth:
+            d.beamWidth,
+
+          beamDepth:
+            d.beamDepth,
+        },
+      ),
+
       label,
+
       properties: {
         label,
-        section: d.section,
-        material: d.material,
+
+        section:
+          d.section,
+
+        material:
+          d.material,
       },
     } as any);
   }
 
-  onMouseMove(e: CanvasEvent, ctx: ToolContext) {
-    if (this.start && ctx.tempShape) {
+  onMouseMove(
+    e: CanvasEvent,
+    ctx: ToolContext,
+  ) {
+    if (
+      this.start &&
+      ctx.tempShape
+    ) {
       ctx.setTempShape({
         ...ctx.tempShape,
+
         geometry: {
-          ...(ctx.tempShape as any).geometry,
-          end: { x: e.x, y: e.y },
+          ...(ctx.tempShape as any)
+            .geometry,
+
+          end: {
+            x: e.x,
+            y: e.y,
+          },
         },
       } as any);
     }
   }
 
-  onMouseUp(e: CanvasEvent, ctx: ToolContext) {
-    if (this.start && ctx.tempShape) {
+  onMouseUp(
+    e: CanvasEvent,
+    ctx: ToolContext,
+  ) {
+    if (
+      this.start &&
+      ctx.tempShape
+    ) {
       ctx.addShape({
         ...ctx.tempShape,
+
         geometry: {
-          ...(ctx.tempShape as any).geometry,
-          end: { x: e.x, y: e.y },
+          ...(ctx.tempShape as any)
+            .geometry,
+
+          end: {
+            x: e.x,
+            y: e.y,
+          },
         },
       } as any);
-      ctx.setTempShape(null);
+
+      ctx.setTempShape(
+        null,
+      );
     }
+
     this.start = null;
   }
 
-  onKeyDown(e: KeyboardEvent, ctx: ToolContext) {
-    if (e.key === 'Escape') {
+  onKeyDown(
+    e: KeyboardEvent,
+    ctx: ToolContext,
+  ) {
+    if (
+      e.key ===
+      'Escape'
+    ) {
       this.start = null;
-      ctx.setTempShape(null);
+
+      ctx.setTempShape(
+        null,
+      );
     }
   }
 }

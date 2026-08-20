@@ -1,3 +1,5 @@
+// src/core/coordinate/coordinateUtils.ts
+
 import type {
   PagePoint,
   ScreenPoint,
@@ -5,82 +7,136 @@ import type {
 } from './coordinateTypes';
 
 /**
- * Convert browser screen coordinates to page coordinates.
+ * Browser screen coordinate
+ * → PDF page coordinate.
  *
- * screenX/screenY:
- *   MouseEvent.clientX / clientY
+ * IMPORTANT:
  *
- * rect:
- *   Canvas bounding rectangle
+ * scale here means PDF VIEWER ZOOM.
  *
- * scale:
- *   Current PDF/editor scale
+ * It does NOT mean:
  *
- * pan:
- *   Current viewer pan offset
+ * drawing scale 1:100 / 1:50.
  */
 export function screenToPage(
   screen: ScreenPoint,
   rect: DOMRect,
-  scale: number,
-  pan = { x: 0, y: 0 }
+  displayScale: number,
+  pan = {
+    x: 0,
+    y: 0,
+  },
 ): PagePoint {
-  const safeScale = Math.max(scale, 0.0001);
+  const safeScale =
+    Math.max(
+      displayScale,
+      0.0001,
+    );
 
   return {
-    x: (screen.x - rect.left - pan.x) / safeScale,
-    y: (screen.y - rect.top - pan.y) / safeScale,
+    x:
+      (
+        screen.x -
+        rect.left -
+        pan.x
+      ) /
+      safeScale,
+
+    y:
+      (
+        screen.y -
+        rect.top -
+        pan.y
+      ) /
+      safeScale,
   };
 }
 
 export function pageToScreen(
   point: PagePoint,
   rect: DOMRect,
-  scale: number,
-  pan = { x: 0, y: 0 }
+  displayScale: number,
+  pan = {
+    x: 0,
+    y: 0,
+  },
 ): ScreenPoint {
   return {
-    x: rect.left + pan.x + point.x * scale,
-    y: rect.top + pan.y + point.y * scale,
+    x:
+      rect.left +
+      pan.x +
+      point.x *
+        displayScale,
+
+    y:
+      rect.top +
+      pan.y +
+      point.y *
+        displayScale,
   };
 }
 
 export function pageToCanvas(
   point: PagePoint,
-  scale: number
+  displayScale: number,
 ): PagePoint {
   return {
-    x: point.x * scale,
-    y: point.y * scale,
+    x:
+      point.x *
+      displayScale,
+
+    y:
+      point.y *
+      displayScale,
   };
 }
 
 export function canvasToPage(
   point: PagePoint,
-  scale: number
+  displayScale: number,
 ): PagePoint {
-  const safeScale = Math.max(scale, 0.0001);
+  const safeScale =
+    Math.max(
+      displayScale,
+      0.0001,
+    );
 
   return {
-    x: point.x / safeScale,
-    y: point.y / safeScale,
+    x:
+      point.x /
+      safeScale,
+
+    y:
+      point.y /
+      safeScale,
   };
 }
 
 export function scalePageSize(
   size: Size,
-  scale: number
+  displayScale: number,
 ): Size {
   return {
-    width: size.width * scale,
-    height: size.height * scale,
+    width:
+      size.width *
+      displayScale,
+
+    height:
+      size.height *
+      displayScale,
   };
 }
 
 export function clampScale(
   scale: number,
   min = 0.25,
-  max = 4
+  max = 4,
 ): number {
-  return Math.max(min, Math.min(max, scale));
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      scale,
+    ),
+  );
 }

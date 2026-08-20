@@ -132,6 +132,7 @@ export const beginHistoryTransaction = createAction('drawing/beginHistoryTransac
 export const endHistoryTransaction = createAction('drawing/endHistoryTransaction');
 export const exportShapes = createAction('drawing/exportShapes');
 
+// Rescale structural shapes based on a scaling factor
 function rescaleStructuralShapes(shapes: Shape[], factor: number) {
   if (!Number.isFinite(factor) || factor <= 0 || factor === 1) return;
 
@@ -362,15 +363,44 @@ export const drawingSlice = createSlice({
       s.currentOpacity = a.payload;
     },
 
-    setScaleRatio: (s, a: PayloadAction<{ num: number; den: number; unit: string }>) => {
-      const oldRatio = s.scaleNumerator / s.scaleDenominator;
-      const newRatio = a.payload.num / a.payload.den;
+    setScaleRatio: (
+      s,
+      a: PayloadAction<{
+        num: number;
+        den: number;
+        unit: string;
+      }>,
+    ) => {
+      /*
+      * IMPORTANT:
+      *
+      * Changing drawing scale must NEVER
+      * modify existing PDF page geometry.
+      *
+      * Existing shapes are already located
+      * on the PDF page.
+      *
+      * Drawing scale only changes how page
+      * coordinates are interpreted as engineering
+      * dimensions.
+      */
+      if (
+        !Number.isFinite(a.payload.num) ||
+        !Number.isFinite(a.payload.den) ||
+        a.payload.num <= 0 ||
+        a.payload.den <= 0
+      ) {
+        return;
+      }
 
-      rescaleStructuralShapes(s.shapes, newRatio / oldRatio);
+      s.scaleNumerator =
+        a.payload.num;
 
-      s.scaleNumerator = a.payload.num;
-      s.scaleDenominator = a.payload.den;
-      s.scaleUnit = a.payload.unit;
+      s.scaleDenominator =
+        a.payload.den;
+
+      s.scaleUnit =
+        a.payload.unit;
     },
 
     _pushUndo: (s, a: PayloadAction<Shape[]>) => {
@@ -533,5 +563,18 @@ export const selectSelectedShapes = (s: RootState) =>
 
 export const selectCanUndo = (s: RootState) => s.drawing.undoStack.length > 0;
 export const selectCanRedo = (s: RootState) => s.drawing.redoStack.length > 0;
+
+export const selectCurrentDrawingScale = (
+  s: RootState,
+) => ({
+  numerator:
+    s.drawing.scaleNumerator,
+
+  denominator:
+    s.drawing.scaleDenominator,
+
+  unit:
+    s.drawing.scaleUnit,
+});
 
 export default drawingSlice;

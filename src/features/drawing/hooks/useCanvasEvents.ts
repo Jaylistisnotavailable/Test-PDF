@@ -1,11 +1,18 @@
-import { useEffect, RefObject } from 'react';
+// src/features/drawing/hooks/useCanvasEvents.ts
+
+import {
+  useEffect,
+  RefObject,
+} from 'react';
 
 import {
   useAppDispatch,
   useAppSelector,
 } from '@/app/store/hooks';
 
-import { store } from '@/app/store';
+import {
+  store,
+} from '@/app/store';
 
 import {
   addShape,
@@ -22,7 +29,16 @@ import {
   redo,
 } from '@/app/store/slices/drawingSlice';
 
-import type { Shape } from '@/app/store/slices/drawingSlice';
+import {
+  setPageOrigin,
+  selectPageCoordinateSystem,
+  selectOriginMode,
+  setOriginMode,
+} from '@/app/store/slices/pageCoordinateSlice';
+
+import type {
+  Shape,
+} from '@/app/store/slices/drawingSlice';
 
 import type {
   StructuralElement,
@@ -33,81 +49,150 @@ import {
   ToolContext,
 } from '../tools/BaseTool';
 
-import { SelectTool } from '../tools/SelectTool';
-import { PointTool } from '../tools/PointTool';
-import { LineTool } from '../tools/LineTool';
-import { PolylineTool } from '../tools/PolylineTool';
-import { PolygonTool } from '../tools/PolygonTool';
-import { RectangleTool } from '../tools/RectangleTool';
-import { CircleTool } from '../tools/CircleTool';
-import { TextTool } from '../tools/TextTool';
-import { MeasureTool } from '../tools/MeasureTool';
-import { EraserTool } from '../tools/EraserTool';
+import {
+  SelectTool,
+} from '../tools/SelectTool';
 
-import { ColumnTool } from '../tools/ColumnTool';
-import { BeamTool } from '../tools/BeamTool';
-import { WallTool } from '../tools/WallTool';
-import { SlabTool } from '../tools/SlabTool';
-import { PortalFrameTool } from '../tools/PortalFrameTool';
+import {
+  PointTool,
+} from '../tools/PointTool';
 
-import { findSnapPoint } from '../snapping/snapEngine';
+import {
+  LineTool,
+} from '../tools/LineTool';
 
+import {
+  PolylineTool,
+} from '../tools/PolylineTool';
 
-/* -------------------------------------------------------------------------- */
-/* Tool instances                                                            */
-/* -------------------------------------------------------------------------- */
+import {
+  PolygonTool,
+} from '../tools/PolygonTool';
 
-const toolInstances: Record<string, BaseTool> = {
-  select: new SelectTool(),
+import {
+  RectangleTool,
+} from '../tools/RectangleTool';
 
-  column: new ColumnTool(),
-  beam: new BeamTool(),
-  wall: new WallTool(),
-  slab: new SlabTool(),
-  portalFrame: new PortalFrameTool(),
+import {
+  CircleTool,
+} from '../tools/CircleTool';
 
-  point: new PointTool(),
-  line: new LineTool(),
-  polyline: new PolylineTool(),
-  polygon: new PolygonTool(),
-  rectangle: new RectangleTool(),
-  circle: new CircleTool(),
-  text: new TextTool(),
-  measure: new MeasureTool(),
-  eraser: new EraserTool(),
-};
+import {
+  TextTool,
+} from '../tools/TextTool';
 
+import {
+  MeasureTool,
+} from '../tools/MeasureTool';
 
-/* -------------------------------------------------------------------------- */
-/* Structural element type guard                                             */
-/* -------------------------------------------------------------------------- */
+import {
+  EraserTool,
+} from '../tools/EraserTool';
 
-/**
- * Determines whether a Shape is a structural element.
- *
- * Shape is a union of:
- *
- *   LegacyShape | StructuralElement
- *
- * Therefore we must narrow the union before passing shapes to functions
- * such as findSnapPoint(), which require StructuralElement[].
- */
+import {
+  ColumnTool,
+} from '../tools/ColumnTool';
+
+import {
+  BeamTool,
+} from '../tools/BeamTool';
+
+import {
+  WallTool,
+} from '../tools/WallTool';
+
+import {
+  SlabTool,
+} from '../tools/SlabTool';
+
+import {
+  PortalFrameTool,
+} from '../tools/PortalFrameTool';
+
+import {
+  findSnapPoint,
+} from '../snapping/snapEngine';
+
+import {
+  screenToPage,
+} from '@/core/coordinate/coordinateUtils';
+
+import {
+  pagePointToEngineeringUnit,
+} from '@/core/coordinate/pageCoordinateSystem';
+
+import {
+  emitCursorCoordinate,
+  emitCursorCoordinateClear,
+} from '@/core/coordinate/coordinateEvents';
+
+const toolInstances:
+  Record<
+    string,
+    BaseTool
+  > = {
+    select:
+      new SelectTool(),
+
+    column:
+      new ColumnTool(),
+
+    beam:
+      new BeamTool(),
+
+    wall:
+      new WallTool(),
+
+    slab:
+      new SlabTool(),
+
+    portalFrame:
+      new PortalFrameTool(),
+
+    point:
+      new PointTool(),
+
+    line:
+      new LineTool(),
+
+    polyline:
+      new PolylineTool(),
+
+    polygon:
+      new PolygonTool(),
+
+    rectangle:
+      new RectangleTool(),
+
+    circle:
+      new CircleTool(),
+
+    text:
+      new TextTool(),
+
+    measure:
+      new MeasureTool(),
+
+    eraser:
+      new EraserTool(),
+  };
+
 function isStructuralElement(
   shape: Shape,
 ): shape is StructuralElement {
   return (
-    shape.type === 'column' ||
-    shape.type === 'beam' ||
-    shape.type === 'wall' ||
-    shape.type === 'slab' ||
-    shape.type === 'portalFrame'
+    shape.type ===
+      'column' ||
+    shape.type ===
+      'beam' ||
+    shape.type ===
+      'wall' ||
+    shape.type ===
+      'slab' ||
+    shape.type ===
+      'portalFrame'
   );
 }
-
-
-/* -------------------------------------------------------------------------- */
-/* Structural tool helper                                                     */
-/* -------------------------------------------------------------------------- */
 
 function isStructuralTool(
   tool: string,
@@ -116,25 +201,22 @@ function isStructuralTool(
     tool === 'column' ||
     tool === 'beam' ||
     tool === 'wall' ||
-    tool === 'slab' ||
-    tool === 'portalFrame'
+    tool ===
+      'portalFrame'
   );
 }
 
-
-/* -------------------------------------------------------------------------- */
-/* Hook                                                                      */
-/* -------------------------------------------------------------------------- */
-
 export function useCanvasEvents(
-  canvasRef: RefObject<HTMLCanvasElement>,
+  canvasRef:
+    RefObject<HTMLCanvasElement>,
 
   hitTest: (
     x: number,
     y: number,
   ) => Shape | null,
 
-  tempShape: Shape | null,
+  tempShape:
+    Shape | null,
 
   setTempShape: (
     shape: Shape | null,
@@ -146,7 +228,12 @@ export function useCanvasEvents(
   ) => void,
 
   setSnapPoint: (
-    point: { x: number; y: number } | null,
+    point:
+      | {
+          x: number;
+          y: number;
+        }
+      | null,
   ) => void,
 
   openProperties?: (
@@ -154,586 +241,709 @@ export function useCanvasEvents(
   ) => void,
 
   setSelectionRect?: (
-    rect: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    } | null,
+    rect:
+      | {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        }
+      | null,
   ) => void,
 ) {
-  const dispatch = useAppDispatch();
+  const dispatch =
+    useAppDispatch();
 
-  const activeTool = useAppSelector(
-    (state) => state.drawing.activeTool,
-  );
+  const activeTool =
+    useAppSelector(
+      (state) =>
+        state.drawing.activeTool,
+    );
 
-  const pdfScale = useAppSelector(
-    (state) => state.pdf.scale,
-  );
+  const pdfScale =
+    useAppSelector(
+      (state) =>
+        state.pdf.scale,
+    );
 
+  const currentPage =
+    useAppSelector(
+      (state) =>
+        state.pdf.currentPage,
+    );
+
+  const coordinateSystem =
+    useAppSelector(
+      (state) =>
+        selectPageCoordinateSystem(
+          state,
+          currentPage,
+        ),
+    );
+
+  const originMode =
+    useAppSelector(
+      selectOriginMode,
+    );
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas =
+      canvasRef.current;
 
     if (!canvas) {
       return;
     }
 
-
-    /* ---------------------------------------------------------------------- */
-    /* Coordinate conversion                                                  */
-    /* ---------------------------------------------------------------------- */
-
-    const coords = (event: MouseEvent) => {
+    const coords = (
+      event: MouseEvent,
+    ) => {
       const rect =
         canvas.getBoundingClientRect();
 
-      const scale =
-        Math.max(pdfScale, 0.0001);
+      return screenToPage(
+        {
+          x:
+            event.clientX,
 
-      return {
-        x:
-          (event.clientX - rect.left) /
-          scale,
+          y:
+            event.clientY,
+        },
 
-        y:
-          (event.clientY - rect.top) /
-          scale,
-      };
+        rect,
+
+        pdfScale,
+      );
     };
 
-
-    /* ---------------------------------------------------------------------- */
-    /* Tool context                                                            */
-    /* ---------------------------------------------------------------------- */
-
-    const getCtx = (): ToolContext => ({
-      dispatch,
-
-      getState: store.getState,
-
-      pdfScale,
-
-      tempShape,
-
-      setTempShape,
-
-      hitTest,
-
-      showTextDialog,
-
-      addShape: (shape) => {
-        dispatch(
-          addShape(shape),
-        );
+    const emitCoordinate = (
+      point: {
+        x: number;
+        y: number;
       },
-
-      updateShape: (
-        id,
-        changes,
-      ) => {
-        dispatch(
-          updateShape({
-            id,
-            changes,
-          }),
+    ) => {
+      const engineering =
+        pagePointToEngineeringUnit(
+          point,
+          coordinateSystem,
         );
-      },
 
-      selectShape: (
-        id,
-        multiSelect,
-      ) => {
-        dispatch(
-          selectShape({
-            id,
-            multiSelect,
-          }),
-        );
-      },
+      emitCursorCoordinate({
+        pageIndex:
+          currentPage,
 
-      clearSelection: () => {
-        dispatch(
-          clearSelection(),
-        );
-      },
+        pagePoint:
+          point,
 
-      deleteSelected: () => {
-        dispatch(
-          deleteSelected(),
-        );
-      },
+        engineeringPoint:
+          engineering,
 
-      beginHistory: () => {
-        dispatch(
-          beginHistoryTransaction(),
-        );
-      },
+        unit:
+          coordinateSystem.unit,
 
-      endHistory: () => {
-        dispatch(
-          endHistoryTransaction(),
-        );
-      },
-    });
+        scaleNumerator:
+          coordinateSystem.scaleNumerator,
 
+        scaleDenominator:
+          coordinateSystem.scaleDenominator,
+      });
+    };
 
-    /* ---------------------------------------------------------------------- */
-    /* Active tool                                                             */
-    /* ---------------------------------------------------------------------- */
+    const getCtx =
+      (): ToolContext => ({
+        dispatch,
+
+        getState:
+          store.getState,
+
+        pdfScale,
+
+        tempShape,
+
+        setTempShape,
+
+        hitTest,
+
+        showTextDialog,
+
+        addShape: (
+          shape,
+        ) => {
+          dispatch(
+            addShape(
+              shape,
+            ),
+          );
+        },
+
+        updateShape: (
+          id,
+          changes,
+        ) => {
+          dispatch(
+            updateShape({
+              id,
+              changes,
+            }),
+          );
+        },
+
+        selectShape: (
+          id,
+          multiSelect,
+        ) => {
+          dispatch(
+            selectShape({
+              id,
+              multiSelect,
+            }),
+          );
+        },
+
+        clearSelection: () => {
+          dispatch(
+            clearSelection(),
+          );
+        },
+
+        deleteSelected: () => {
+          dispatch(
+            deleteSelected(),
+          );
+        },
+
+        beginHistory: () => {
+          dispatch(
+            beginHistoryTransaction(),
+          );
+        },
+
+        endHistory: () => {
+          dispatch(
+            endHistoryTransaction(),
+          );
+        },
+      });
 
     const tool =
-      toolInstances[activeTool] ??
+      toolInstances[
+        activeTool
+      ] ??
       toolInstances.select;
 
     canvas.style.cursor =
-      tool.cursor;
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Selection rectangle                                                    */
-    /* ---------------------------------------------------------------------- */
+      originMode
+        ? 'crosshair'
+        : tool.cursor;
 
     let selectionStart:
-      | { x: number; y: number }
+      | {
+          x: number;
+          y: number;
+        }
       | null = null;
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Structural snap elements                                               */
-    /* ---------------------------------------------------------------------- */
 
     const getStructuralElements =
       (): StructuralElement[] => {
         const state =
           store.getState();
 
-        return state.drawing.shapes.filter(
-          (
-            shape,
-          ): shape is StructuralElement =>
-            shape.pageIndex ===
-              state.pdf.currentPage &&
-            isStructuralElement(shape),
-        );
+        return state.drawing.shapes
+          .filter(
+            (
+              shape,
+            ): shape is StructuralElement =>
+              shape.pageIndex ===
+                state.pdf.currentPage &&
+              isStructuralElement(
+                shape,
+              ),
+          );
       };
 
+    const handleMouseDown =
+      (
+        event: MouseEvent,
+      ) => {
+        const point =
+          coords(event);
 
-    /* ---------------------------------------------------------------------- */
-    /* Mouse down                                                              */
-    /* ---------------------------------------------------------------------- */
+        /*
+         * SET PAGE ORIGIN MODE
+         *
+         * The next click defines
+         * the PDF base point.
+         */
+        if (
+          originMode
+        ) {
+          dispatch(
+            setPageOrigin({
+              pageIndex:
+                currentPage,
 
-    const handleMouseDown = (
-      event: MouseEvent,
-    ) => {
-      const point =
-        coords(event);
+              x:
+                point.x,
 
-
-      if (
-        activeTool === 'select' &&
-        !hitTest(
-          point.x,
-          point.y,
-        )
-      ) {
-        selectionStart = point;
-      }
-
-
-      const state =
-        store.getState();
-
-      const structural =
-        isStructuralTool(
-          activeTool,
-        );
-
-
-      let snappedPoint =
-        point;
-
-
-      if (structural) {
-        const structuralElements =
-          getStructuralElements();
-
-        const snap =
-          findSnapPoint(
-            point,
-            structuralElements,
-            pdfScale,
-            {
-              enabled:
-                state.ui.snapEnabled,
-
-              gridSize:
-                state.ui.gridSize,
-
-              types:
-                state.ui.snapTypes,
-            },
+              y:
+                point.y,
+            }),
           );
 
-        snappedPoint =
-          snap?.point ?? point;
-      }
+          dispatch(
+            setOriginMode(
+              false,
+            ),
+          );
 
+          emitCoordinate(
+            point,
+          );
 
-      setSnapPoint(
-        null,
-      );
+          return;
+        }
 
-
-      tool.onMouseDown(
-        {
-          x: snappedPoint.x,
-          y: snappedPoint.y,
-          rawEvent: event,
-        },
-        getCtx(),
-      );
-    };
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Mouse move                                                              */
-    /* ---------------------------------------------------------------------- */
-
-    const handleMouseMove = (
-      event: MouseEvent,
-    ) => {
-      const point =
-        coords(event);
-
-
-      /* Selection rectangle */
-      if (selectionStart) {
-        setSelectionRect?.({
-          x: Math.min(
-            selectionStart.x,
+        if (
+          activeTool ===
+            'select' &&
+          !hitTest(
             point.x,
-          ),
-
-          y: Math.min(
-            selectionStart.y,
             point.y,
-          ),
+          )
+        ) {
+          selectionStart =
+            point;
+        }
 
-          width: Math.abs(
-            point.x -
-              selectionStart.x,
-          ),
+        const state =
+          store.getState();
 
-          height: Math.abs(
-            point.y -
-              selectionStart.y,
-          ),
-        });
-      }
-
-
-      const state =
-        store.getState();
-
-      const structural =
-        isStructuralTool(
-          activeTool,
-        );
-
-
-      let snapPoint:
-        | { x: number; y: number }
-        | null = null;
-
-
-      if (structural) {
-        const structuralElements =
-          getStructuralElements();
-
-        const snap =
-          findSnapPoint(
-            point,
-            structuralElements,
-            pdfScale,
-            {
-              enabled:
-                state.ui.snapEnabled,
-
-              gridSize:
-                state.ui.gridSize,
-
-              types:
-                state.ui.snapTypes,
-            },
+        const structural =
+          isStructuralTool(
+            activeTool,
           );
 
-        snapPoint =
-          snap?.point ?? null;
-      }
+        let snappedPoint =
+          point;
 
+        if (
+          structural
+        ) {
+          const structuralElements =
+            getStructuralElements();
 
-      setSnapPoint(
-        snapPoint,
-      );
+          const snap =
+            findSnapPoint(
+              point,
+              structuralElements,
+              pdfScale,
+              {
+                enabled:
+                  state.ui
+                    .snapEnabled,
 
+                gridSize:
+                  state.ui
+                    .gridSize,
 
-      const toolPoint =
-        snapPoint ?? point;
+                types:
+                  state.ui
+                    .snapTypes,
+              },
+            );
 
+          snappedPoint =
+            snap?.point ??
+            point;
+        }
 
-      tool.onMouseMove(
-        {
-          x: toolPoint.x,
-          y: toolPoint.y,
-          rawEvent: event,
-        },
-        getCtx(),
-      );
-    };
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Mouse up                                                                */
-    /* ---------------------------------------------------------------------- */
-
-    const handleMouseUp = (
-      event: MouseEvent,
-    ) => {
-      const point =
-        coords(event);
-
-
-      selectionStart =
-        null;
-
-      setSelectionRect?.(
-        null,
-      );
-
-
-      tool.onMouseUp(
-        {
-          x: point.x,
-          y: point.y,
-          rawEvent: event,
-        },
-        getCtx(),
-      );
-
-
-      if (
-        activeTool !== 'beam' &&
-        activeTool !== 'wall' &&
-        activeTool !== 'portalFrame'
-      ) {
         setSnapPoint(
           null,
         );
-      }
-    };
 
+        tool.onMouseDown(
+          {
+            x:
+              snappedPoint.x,
 
-    /* ---------------------------------------------------------------------- */
-    /* Double click                                                            */
-    /* ---------------------------------------------------------------------- */
+            y:
+              snappedPoint.y,
 
-    const handleDoubleClick = (
-      event: MouseEvent,
-    ) => {
-      const point =
-        coords(event);
+            rawEvent:
+              event,
+          },
 
+          getCtx(),
+        );
+      };
 
-      if (
-        activeTool === 'select'
-      ) {
-        openProperties?.(
-          hitTest(
-            point.x,
-            point.y,
-          ),
+    const handleMouseMove =
+      (
+        event: MouseEvent,
+      ) => {
+        const point =
+          coords(event);
+
+        /*
+         * Engineering coordinate
+         * is emitted on EVERY hover.
+         */
+        emitCoordinate(
+          point,
         );
 
-        return;
-      }
+        if (
+          selectionStart
+        ) {
+          setSelectionRect?.({
+            x:
+              Math.min(
+                selectionStart.x,
+                point.x,
+              ),
 
+            y:
+              Math.min(
+                selectionStart.y,
+                point.y,
+              ),
 
-      tool.onDblClick?.(
-        {
-          x: point.x,
-          y: point.y,
-          rawEvent: event,
-        },
-        getCtx(),
-      );
-    };
+            width:
+              Math.abs(
+                point.x -
+                  selectionStart.x,
+              ),
 
+            height:
+              Math.abs(
+                point.y -
+                  selectionStart.y,
+              ),
+          });
+        }
 
-    /* ---------------------------------------------------------------------- */
-    /* Text input detection                                                    */
-    /* ---------------------------------------------------------------------- */
+        const state =
+          store.getState();
 
-    const isTyping = (
-      target: EventTarget | null,
-    ): boolean => {
-      const element =
-        target as HTMLElement | null;
+        const structural =
+          isStructuralTool(
+            activeTool,
+          );
 
-      if (!element) {
-        return false;
-      }
+        let snapPoint:
+          | {
+              x: number;
+              y: number;
+            }
+          | null = null;
 
+        if (
+          structural
+        ) {
+          const structuralElements =
+            getStructuralElements();
 
-      return (
-        [
-          'INPUT',
-          'TEXTAREA',
-          'SELECT',
-        ].includes(
-          element.tagName,
-        ) ||
-        !!element.closest(
-          '[contenteditable="true"]',
-        )
-      );
-    };
+          const snap =
+            findSnapPoint(
+              point,
+              structuralElements,
+              pdfScale,
+              {
+                enabled:
+                  state.ui
+                    .snapEnabled,
 
+                gridSize:
+                  state.ui
+                    .gridSize,
 
-    /* ---------------------------------------------------------------------- */
-    /* Keyboard events                                                         */
-    /* ---------------------------------------------------------------------- */
+                types:
+                  state.ui
+                    .snapTypes,
+              },
+            );
 
-    const handleKeyDown = (
-      event: KeyboardEvent,
-    ) => {
-      if (
-        isTyping(
-          event.target,
-        )
-      ) {
-        return;
-      }
+          snapPoint =
+            snap?.point ??
+            null;
+        }
 
-
-      /* Delete */
-      if (
-        event.key === 'Delete' ||
-        event.key === 'Backspace'
-      ) {
-        event.preventDefault();
-
-        dispatch(
-          deleteSelected(),
+        setSnapPoint(
+          snapPoint,
         );
 
-        return;
-      }
+        const toolPoint =
+          snapPoint ??
+          point;
 
+        tool.onMouseMove(
+          {
+            x:
+              toolPoint.x,
 
-      const key =
-        event.key.toLowerCase();
+            y:
+              toolPoint.y,
 
+            rawEvent:
+              event,
+          },
 
-      /* Copy */
-      if (
-        (event.ctrlKey ||
-          event.metaKey) &&
-        key === 'c'
-      ) {
-        event.preventDefault();
+          getCtx(),
+        );
+      };
 
-        dispatch(
-          copySelected(),
+    const handleMouseLeave =
+      () => {
+        emitCursorCoordinateClear();
+
+        setSnapPoint(
+          null,
+        );
+      };
+
+    const handleMouseUp =
+      (
+        event: MouseEvent,
+      ) => {
+        const point =
+          coords(event);
+
+        selectionStart =
+          null;
+
+        setSelectionRect?.(
+          null,
         );
 
-        return;
-      }
+        tool.onMouseUp(
+          {
+            x:
+              point.x,
 
+            y:
+              point.y,
 
-      /* Paste */
-      if (
-        (event.ctrlKey ||
-          event.metaKey) &&
-        key === 'v'
-      ) {
-        event.preventDefault();
+            rawEvent:
+              event,
+          },
 
-        dispatch(
-          pasteClipboard(),
+          getCtx(),
         );
 
-        return;
-      }
+        if (
+          activeTool !==
+            'beam' &&
+          activeTool !==
+            'wall' &&
+          activeTool !==
+            'portalFrame'
+        ) {
+          setSnapPoint(
+            null,
+          );
+        }
+      };
 
+    const handleDoubleClick =
+      (
+        event: MouseEvent,
+      ) => {
+        const point =
+          coords(event);
 
-      /* Undo / redo */
-      if (
-        (event.ctrlKey ||
-          event.metaKey) &&
-        key === 'z'
-      ) {
-        event.preventDefault();
-
-        dispatch(
-          event.shiftKey
-            ? redo()
-            : undo(),
-        );
-
-        return;
-      }
-
-
-      /* Tool shortcuts */
-      if (
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.altKey
-      ) {
-        const toolMap:
-          Record<string, string> = {
-            v: 'select',
-            c: 'column',
-            b: 'beam',
-            w: 'wall',
-            s: 'slab',
-            p: 'portalFrame',
-            m: 'measure',
-          };
-
-
-        const nextTool =
-          toolMap[key];
-
-
-        if (nextTool) {
-          event.preventDefault();
-
-          dispatch(
-            setActiveTool(
-              nextTool as any,
+        if (
+          activeTool ===
+          'select'
+        ) {
+          openProperties?.(
+            hitTest(
+              point.x,
+              point.y,
             ),
           );
 
           return;
         }
-      }
 
+        tool.onDblClick?.(
+          {
+            x:
+              point.x,
 
-      /* Allow the active tool to process
-         additional keyboard commands. */
-      tool.onKeyDown?.(
-        event,
-        getCtx(),
-      );
-    };
+            y:
+              point.y,
 
+            rawEvent:
+              event,
+          },
 
-    /* ---------------------------------------------------------------------- */
-    /* Event registration                                                      */
-    /* ---------------------------------------------------------------------- */
+          getCtx(),
+        );
+      };
+
+    const isTyping =
+      (
+        target:
+          EventTarget | null,
+      ): boolean => {
+        const element =
+          target as
+            | HTMLElement
+            | null;
+
+        if (!element) {
+          return false;
+        }
+
+        return (
+          [
+            'INPUT',
+            'TEXTAREA',
+            'SELECT',
+          ].includes(
+            element.tagName,
+          ) ||
+          !!element.closest(
+            '[contenteditable="true"]',
+          )
+        );
+      };
+
+    const handleKeyDown =
+      (
+        event: KeyboardEvent,
+      ) => {
+        if (
+          isTyping(
+            event.target,
+          )
+        ) {
+          return;
+        }
+
+        if (
+          event.key ===
+            'Escape' &&
+          originMode
+        ) {
+          dispatch(
+            setOriginMode(
+              false,
+            ),
+          );
+
+          return;
+        }
+
+        if (
+          event.key ===
+            'Delete' ||
+          event.key ===
+            'Backspace'
+        ) {
+          event.preventDefault();
+
+          dispatch(
+            deleteSelected(),
+          );
+
+          return;
+        }
+
+        const key =
+          event.key.toLowerCase();
+
+        if (
+          (
+            event.ctrlKey ||
+            event.metaKey
+          ) &&
+          key === 'c'
+        ) {
+          event.preventDefault();
+
+          dispatch(
+            copySelected(),
+          );
+
+          return;
+        }
+
+        if (
+          (
+            event.ctrlKey ||
+            event.metaKey
+          ) &&
+          key === 'v'
+        ) {
+          event.preventDefault();
+
+          dispatch(
+            pasteClipboard(),
+          );
+
+          return;
+        }
+
+        if (
+          (
+            event.ctrlKey ||
+            event.metaKey
+          ) &&
+          key === 'z'
+        ) {
+          event.preventDefault();
+
+          dispatch(
+            event.shiftKey
+              ? redo()
+              : undo(),
+          );
+
+          return;
+        }
+
+        if (
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey
+        ) {
+          const toolMap:
+            Record<
+              string,
+              string
+            > = {
+              v: 'select',
+              c: 'column',
+              b: 'beam',
+              w: 'wall',
+              s: 'slab',
+              p: 'portalFrame',
+              m: 'measure',
+            };
+
+          const nextTool =
+            toolMap[key];
+
+          if (
+            nextTool
+          ) {
+            event.preventDefault();
+
+            dispatch(
+              setActiveTool(
+                nextTool as any,
+              ),
+            );
+
+            return;
+          }
+        }
+
+        tool.onKeyDown?.(
+          event,
+          getCtx(),
+        );
+      };
 
     canvas.addEventListener(
       'mousedown',
@@ -751,6 +961,11 @@ export function useCanvasEvents(
     );
 
     canvas.addEventListener(
+      'mouseleave',
+      handleMouseLeave,
+    );
+
+    canvas.addEventListener(
       'dblclick',
       handleDoubleClick,
     );
@@ -759,11 +974,6 @@ export function useCanvasEvents(
       'keydown',
       handleKeyDown,
     );
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Cleanup                                                                 */
-    /* ---------------------------------------------------------------------- */
 
     return () => {
       canvas.removeEventListener(
@@ -782,6 +992,11 @@ export function useCanvasEvents(
       );
 
       canvas.removeEventListener(
+        'mouseleave',
+        handleMouseLeave,
+      );
+
+      canvas.removeEventListener(
         'dblclick',
         handleDoubleClick,
       );
@@ -790,10 +1005,15 @@ export function useCanvasEvents(
         'keydown',
         handleKeyDown,
       );
+
+      emitCursorCoordinateClear();
     };
   }, [
     activeTool,
     pdfScale,
+    currentPage,
+    coordinateSystem,
+    originMode,
     dispatch,
     hitTest,
     tempShape,
