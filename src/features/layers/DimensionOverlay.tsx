@@ -1,19 +1,42 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from '@/app/store/hooks';
 import { selectShapesByPage } from '@/app/store/slices/drawingSlice';
 import { renderDimension } from './DimensionRenderer';
 
 export function DimensionOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pdfScale = useAppSelector(state => state.pdf.scale);
-  const currentPage = useAppSelector(state => state.pdf.currentPage);
-  const shapes = useAppSelector(state => selectShapesByPage(state, currentPage));
-  const showDimensions = useAppSelector(state => state.layer.showDimensions);
-  const layers = useAppSelector(state => state.layer.layers);
+  const displayScale = useAppSelector((state) => state.pdf.scale);
+  const currentPage = useAppSelector((state) => state.pdf.currentPage);
+  const shapes = useAppSelector((state) => selectShapesByPage(state, currentPage));
+  const showDimensions = useAppSelector((state) => state.layer.showDimensions);
+  const layers = useAppSelector((state) => state.layer.layers);
+  const scaleNumerator = useAppSelector((state) => state.drawing.scaleNumerator);
+  const scaleDenominator = useAppSelector((state) => state.drawing.scaleDenominator);
+  const scaleUnit = useAppSelector((state) => state.drawing.scaleUnit);
+  const [canvasSizeVersion, setCanvasSizeVersion] = useState(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!parent || typeof ResizeObserver === 'undefined') return;
+
+    let raf = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setCanvasSizeVersion((v) => v + 1));
+    });
+    observer.observe(parent);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !showDimensions) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -21,32 +44,52 @@ export function DimensionOverlay() {
       const dpr = window.devicePixelRatio || 1;
       const cssW = canvas.clientWidth;
       const cssH = canvas.clientHeight;
-      canvas.width = cssW * dpr;
-      canvas.height = cssH * dpr;
-      
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.scale(pdfScale * dpr, pdfScale * dpr);
-      ctx.clearRect(0, 0, cssW, cssH);
+      if (!cssW || !cssH) return;
 
-      // 仅渲染可见图层中的图形
-      const visibleLayerIds = layers.filter(l => l.visible).map(l => l.id);
-      
-      shapes.forEach(shape => {
-        if (visibleLayerIds.includes(shape.layerId)) {
-          renderDimension(ctx, shape, true); 
+      canvas.width = Math.max(1, Math.ceil(cssW * dpr));
+      canvas.height = Math.max(1, Math.ceil(cssH * dpr));
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(displayScale * dpr, 0, 0, displayScale * dpr, 0, 0);
+
+      const visibleLayerIds = new Set(
+        layers.filter((layer) => layer.visible).map((layer) => layer.id),
+      );
+
+      shapes.forEach((shape) => {
+        if (visibleLayerIds.has(shape.layerId)) {
+          renderDimension(
+            ctx,
+            shape,
+            true,
+            scaleNumerator,
+            scaleDenominator,
+            scaleUnit,
+          );
         }
       });
     });
 
     return () => cancelAnimationFrame(frameId);
-  }, [shapes, pdfScale, showDimensions, layers, currentPage]);
+  }, [
+    shapes,
+    displayScale,
+    showDimensions,
+    layers,
+    currentPage,
+    scaleNumerator,
+    scaleDenominator,
+    scaleUnit,
+    canvasSizeVersion,
+  ]);
 
   if (!showDimensions) return null;
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="absolute inset-0 w-full h-full z-20 pointer-events-none" 
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 w-full h-full z-20 pointer-events-none"
     />
   );
 }

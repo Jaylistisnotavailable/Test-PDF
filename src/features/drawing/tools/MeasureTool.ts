@@ -1,6 +1,10 @@
 import { BaseTool, CanvasEvent, ToolContext } from './BaseTool';
 import { distance } from '../utils/geometry';
 import type { MeasureShape } from '@/app/store/slices/drawingSlice';
+import {
+  pagePtToEngineeringUnit,
+  type EngineeringUnit,
+} from '@/core/coordinate/engineeringScale';
 
 export class MeasureTool extends BaseTool {
   cursor = 'crosshair';
@@ -8,49 +12,64 @@ export class MeasureTool extends BaseTool {
 
   onMouseDown(e: CanvasEvent, ctx: ToolContext) {
     this.startPoint = { x: e.x, y: e.y };
-    const rootState = ctx.getState();
-    const activeLayerId = rootState.layer.activeLayerId;
-    const drawingState = rootState.drawing;
+    const state = ctx.getState();
+    const drawing = state.drawing;
+    const unit = (drawing.scaleUnit || 'mm') as EngineeringUnit;
 
     ctx.setTempShape({
-      id: 'temp', 
-      type: 'measure', 
-      points: [e.x, e.y, e.x, e.y], 
+      id: 'temp',
+      type: 'measure',
+      points: [e.x, e.y, e.x, e.y],
       realLength: 0,
-      unit: drawingState.scaleUnit, 
-      scaleRatio: `${drawingState.scaleNumerator}:${drawingState.scaleDenominator}`,
-      layerId: activeLayerId, 
-      pageIndex: rootState.pdf.currentPage,
-      color: drawingState.currentStrokeColor, 
-      strokeWidth: drawingState.currentStrokeWidth, 
-      opacity: drawingState.currentOpacity,
-      createdAt: '', 
-      updatedAt: ''
+      unit,
+      scaleRatio: `${drawing.scaleNumerator}:${drawing.scaleDenominator}`,
+      layerId: state.layer.activeLayerId,
+      pageIndex: state.pdf.currentPage,
+      color: drawing.currentStrokeColor,
+      strokeWidth: drawing.currentStrokeWidth,
+      opacity: drawing.currentOpacity,
+      createdAt: '',
+      updatedAt: '',
     } as MeasureShape);
   }
 
   onMouseMove(e: CanvasEvent, ctx: ToolContext) {
-    if (this.startPoint && ctx.tempShape) {
-      // 【修复】：断言 tempShape 为 MeasureShape
-      const currentShape = ctx.tempShape as MeasureShape;
-      const pts = [this.startPoint.x, this.startPoint.y, e.x, e.y];
-      const pixelLen = distance(pts[0], pts[1], pts[2], pts[3]);
-      const drawingState = ctx.getState().drawing;
-      const realLen = pixelLen * (drawingState.scaleNumerator / drawingState.scaleDenominator);
-      
-      ctx.setTempShape({ 
-        ...currentShape, 
-        points: pts, 
-        realLength: parseFloat(realLen.toFixed(2)) 
-      } as MeasureShape); // 断言为 MeasureShape
-    }
+    if (!this.startPoint || !ctx.tempShape) return;
+
+    const currentShape = ctx.tempShape as MeasureShape;
+    const pts = [this.startPoint.x, this.startPoint.y, e.x, e.y];
+    const pageLength = distance(pts[0], pts[1], pts[2], pts[3]);
+    const drawing = ctx.getState().drawing;
+    const unit = (drawing.scaleUnit || 'mm') as EngineeringUnit;
+    const realLength = pagePtToEngineeringUnit(
+      pageLength,
+      drawing.scaleNumerator,
+      drawing.scaleDenominator,
+      unit,
+    );
+
+    ctx.setTempShape({
+      ...currentShape,
+      points: pts,
+      realLength: Number(realLength.toFixed(unit === 'm' ? 3 : unit === 'cm' ? 2 : 1)),
+      unit,
+      scaleRatio: `${drawing.scaleNumerator}:${drawing.scaleDenominator}`,
+    } as MeasureShape);
   }
 
   onMouseUp(e: CanvasEvent, ctx: ToolContext) {
     if (ctx.tempShape) {
+      this.onMouseMove(e, ctx);
       ctx.addShape(ctx.tempShape);
       ctx.setTempShape(null);
     }
     this.startPoint = null;
+  }
+
+  onKeyDown(e: KeyboardEvent, ctx: ToolContext) {
+    if (e.key === 'Escape') {
+      this.startPoint = null;
+      ctx.setTempShape(null);
+    }
   }
 }
