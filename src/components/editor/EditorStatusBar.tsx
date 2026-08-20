@@ -25,7 +25,22 @@ export function EditorStatusBar({ onFitWidth, onFitPage}: { onFitWidth?: () => v
   const [cursor, setCursor] = useState<CursorCoordinateEvent | null>(null);
 
   useEffect(() => {
-    return subscribeCursorCoordinate(setCursor);
+    return subscribeCursorCoordinate(
+      (nextCursor) => {
+        if (!nextCursor) {
+          setCursor(null);
+          return;
+        }
+
+        console.log(
+          'CURSOR:',
+          nextCursor.pagePoint,
+          nextCursor.engineeringPoint,
+        );
+
+        setCursor(nextCursor);
+      },
+    );
   }, []);
 
   const zoomIn = () => dispatch(setScale(Math.min(4.0, scale + 0.25)));
