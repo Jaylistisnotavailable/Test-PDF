@@ -12,13 +12,7 @@ import {
   subscribeCursorCoordinate,
   type CursorCoordinateEvent,
 } from '@/core/coordinate/coordinateEvents';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Crosshair,
-  X,
-} from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Crosshair, X} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function EditorStatusBar({
@@ -48,28 +42,11 @@ export function EditorStatusBar({
     return subscribeCursorCoordinate(setCursor);
   }, []);
 
-  const zoomIn = () =>
-    dispatch(
-      setScale(
-        Math.min(
-          4.0,
-          scale + 0.25
-        )
-      )
-    );
+  const zoomIn = () => dispatch( setScale( Math.min( 4.0, scale + 0.25)));
 
-  const zoomOut = () =>
-    dispatch(
-      setScale(
-        Math.max(
-          0.25,
-          scale - 0.25
-        )
-      )
-    );
+  const zoomOut = () => dispatch( setScale( Math.max( 0.25, scale - 0.25)));
 
-  const coordinateUnit =
-    pageCoordinateSystem.unit;
+  const coordinateUnit = pageCoordinateSystem.unit;
   const scaleText =
     pageCoordinateSystem.scaleNumerator === 1
       ? `1:${pageCoordinateSystem.scaleDenominator}`
@@ -78,12 +55,8 @@ export function EditorStatusBar({
   /*
    * Number of decimal places for engineering coordinate.
    */
-  const engineeringDecimals =
-    coordinateUnit === 'm'
-      ? 3
-      : coordinateUnit === 'cm'
-        ? 2
-        : 1;
+  const engineeringDecimals = coordinateUnit === 'm' ? 3
+      : coordinateUnit === 'cm' ? 2 : 1;
 
   /*
    * PDF page coordinates are stored in PDF points.
@@ -93,14 +66,8 @@ export function EditorStatusBar({
    * They represent the cursor position in the
    * persistent PDF/page coordinate system.
    */
-  const pageX =
-    cursor
-      ? cursor.pagePoint.x
-      : null;
-  const pageY =
-    cursor
-      ? cursor.pagePoint.y
-      : null;
+  const pageX = cursor ? cursor.pagePoint.x : null;
+  const pageY = cursor ? cursor.pagePoint.y : null;
 
   /*
    * Engineering coordinates:
@@ -113,47 +80,34 @@ export function EditorStatusBar({
    * These values are already calculated by
    * pagePointToEngineeringUnit().
    */
-  const engineeringX =
-    cursor
-      ? cursor.engineeringPoint.x
-      : null;
-  const engineeringY =
-    cursor
-      ? cursor.engineeringPoint.y
-      : null;
+  const engineeringX = cursor ? cursor.engineeringPoint.x : null;
+  const engineeringY = cursor ? cursor.engineeringPoint.y : null;
 
+  // 【新增】判断当前页面是否已经设置了自定义原点（默认原点是 0,0）
+  const hasCustomOrigin =
+    pageCoordinateSystem.origin.x !== 0 ||
+    pageCoordinateSystem.origin.y !== 0;
+
+  // 【修正】只要处于“等待点击”状态，或者“已经有自定义原点”，取消按钮就应该有效
+  const isCancelDisabled = !originMode && !hasCustomOrigin;
+
+  // 【修正】取消按钮点击事件
   const handleCancelOrigin = () => {
+    // 1. 清除已设置的原点，恢复默认计算逻辑
     dispatch(clearPageOrigin({ pageIndex: currentPage }));
+    
+    // 2. 如果当前正处于“等待点击画布”的状态，需要退出该状态
+    if (originMode) {
+      dispatch(setOriginMode(false));
+    }
   };
 
   return (
-    <footer
-      className="
-        h-8
-        flex
-        items-center
-        justify-between
-        px-3
-        bg-editor-toolbar
-        border-t
-        border-border
-        text-xs
-        text-muted-foreground
-        shrink-0
-      "
-    >
+    <footer className="h-8 flex items-center justify-between px-3 bg-editor-toolbar border-t border-border text-xs text-muted-foreground shrink-0">
       {/* =========================================================
           LEFT SIDE
           ========================================================= */}
-      <div
-        className="
-          flex
-          items-center
-          gap-3
-          min-w-0
-          overflow-hidden
-        "
-      >
+      <div className="flex items-center gap-3 min-w-0 overflow-hidden">
         {/* Page */}
         <span className="whitespace-nowrap">
           Page {currentPage} of {totalPages || '--'}
@@ -248,7 +202,7 @@ export function EditorStatusBar({
             gap-1
             whitespace-nowrap
           "
-          disabled={!originMode}
+          disabled={isCancelDisabled}
           onClick={handleCancelOrigin}
           title="取消设置原点"
         >
