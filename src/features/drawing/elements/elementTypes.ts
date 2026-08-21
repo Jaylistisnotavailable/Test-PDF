@@ -70,6 +70,8 @@ export interface NodeElement extends StructuralBase {
   geometry: NodeGeometry;
   properties: {
     label: string;
+    x?: number;
+    y?: number;
   };
 }
 

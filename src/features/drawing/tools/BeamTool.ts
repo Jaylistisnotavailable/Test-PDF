@@ -1,6 +1,7 @@
 import { BaseTool, CanvasEvent, ToolContext } from './BaseTool';
 import { makeBase, ensureLabel, getOrCreateNode, distance } from './structuralToolUtils';
 import { getStructuralDefaults } from '../elements/elementDefaults';
+import { resolveNode } from '../nodes/nodeUtils';
 
 export class BeamTool extends BaseTool {
   cursor = 'crosshair';
@@ -32,28 +33,35 @@ export class BeamTool extends BaseTool {
   onMouseUp(e: CanvasEvent, ctx: ToolContext) {
     if (this.start && ctx.tempShape) {
       const endPoint = { x: e.x, y: e.y };
-      
-      // 处理起点节点
-      const startNodeResult = getOrCreateNode(ctx, this.start, 2);
-      if (startNodeResult.isNew && startNodeResult.shape) ctx.addShape(startNodeResult.shape);
+      const state = ctx.getState();
 
-      // 处理终点节点 (如果起点终点距离过近则复用同一个节点)
-      let endNodeResult: ReturnType<typeof getOrCreateNode> | null = null;
-      if (distance(this.start, endPoint) > 2) {
-        endNodeResult = getOrCreateNode(ctx, endPoint, 2);
-        if (endNodeResult.isNew && endNodeResult.shape) ctx.addShape(endNodeResult.shape);
-      } else {
-        endNodeResult = startNodeResult;
+      // 1. 解析或创建起点节点
+      const startNodeResult = resolveNode(this.start, state.drawing.shapes, {
+        pageIndex: state.pdf.currentPage,
+        layerId: state.layer.activeLayerId,
+        tolerance: 2,
+      });
+      if (startNodeResult.isNew) ctx.addShape(startNodeResult.node as any);
+
+      // 2. 解析或创建终点节点 (如果距离过近则复用起点节点)
+      let endNodeResult = startNodeResult;
+      if (Math.hypot(this.start.x - endPoint.x, this.start.y - endPoint.y) > 2) {
+        endNodeResult = resolveNode(endPoint, state.drawing.shapes, {
+          pageIndex: state.pdf.currentPage,
+          layerId: state.layer.activeLayerId,
+          tolerance: 2,
+        });
+        if (endNodeResult.isNew) ctx.addShape(endNodeResult.node as any);
       }
 
-      // 添加梁，并记录节点 ID
+      // 3. 添加梁，并记录节点 ID
       ctx.addShape({
         ...ctx.tempShape,
         geometry: { ...(ctx.tempShape as any).geometry, end: endPoint },
         properties: {
           ...(ctx.tempShape as any).properties,
-          startNodeId: startNodeResult.id,
-          endNodeId: endNodeResult!.id,
+          startNodeId: startNodeResult.node.id,
+          endNodeId: endNodeResult.node.id,
         },
       } as any);
 

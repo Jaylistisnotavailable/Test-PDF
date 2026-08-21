@@ -3,6 +3,10 @@ import { distanceToSegment, pointInPolygon, rotatePoint } from './geometryUtils'
 
 export function hitTestStructuralElement(element: StructuralElement, p:{x:number;y:number}, tolerance:number): boolean {
   switch(element.type) {
+    case 'node': {
+      const g = element.geometry;
+      return Math.hypot(g.x - p.x, g.y - p.y) <= tolerance;
+    }
     case 'column': {
       const g=element.geometry, c={x:g.x+g.width/2,y:g.y+g.depth/2};
       const q=rotatePoint(p,c,-g.rotation);
@@ -31,5 +35,7 @@ export function hitTestStructuralElement(element: StructuralElement, p:{x:number
         distanceToSegment(p,right,rightTop)<=g.columnWidth/2+tolerance ||
         distanceToSegment(p,leftTop,rightTop)<=g.beamDepth/2+tolerance;
     }
+    default:
+      return false;
   }
 }

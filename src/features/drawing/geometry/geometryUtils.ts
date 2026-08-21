@@ -113,6 +113,14 @@ export function polygonBounds(points: PagePoint[]): Bounds {
  */
 export function elementBounds(element: StructuralElement): Bounds {
   switch (element.type) {
+    case 'node': {
+      return {
+        minX: element.geometry.x,
+        minY: element.geometry.y,
+        maxX: element.geometry.x,
+        maxY: element.geometry.y,
+      };
+    }
     case 'column': {
       // Calculate column center and half dimensions
       const cx = element.geometry.x + element.geometry.width / 2;
@@ -176,6 +184,8 @@ export function elementBounds(element: StructuralElement): Bounds {
         maxY: Math.max(g.start.y, g.end.y) + g.height + g.beamDepth,
       };
     }
+  default:
+    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
   }
 }
 
@@ -218,6 +228,14 @@ export function pointInPolygon(p: PagePoint, points: PagePoint[]): boolean {
  */
 export function translateElement(element: StructuralElement, dx: number, dy: number): StructuralElement {
   switch (element.type) {
+    case 'node':
+      return {
+        ...element,
+        geometry: {
+          x: element.geometry.x + dx,
+          y: element.geometry.y + dy,
+        },
+      };
     case 'column':
       return {
         ...element,
@@ -261,6 +279,9 @@ export function translateElement(element: StructuralElement, dx: number, dy: num
           end: { x: element.geometry.end.x + dx, y: element.geometry.end.y + dy },
         },
       };
+  
+  default:
+    return element;
   }
 }
 

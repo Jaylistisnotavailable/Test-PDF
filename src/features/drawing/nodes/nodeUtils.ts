@@ -1,21 +1,12 @@
 import { nanoid } from 'nanoid';
 
 import type { PagePoint } from '@/core/coordinate/coordinateTypes';
+import type { Shape } from '@/app/store/slices/drawingSlice'; // 新增：引入 Shape
+import type { ElementStyle, NodeElement, StructuralElement,} from '../elements/elementTypes';
 
-import type {
-  ElementStyle,
-  NodeElement,
-  StructuralElement,
-} from '../elements/elementTypes';
+import { DEFAULT_ELEMENT_STYLE, prefixForType,} from '../elements/elementDefaults';
 
-import {
-  DEFAULT_ELEMENT_STYLE,
-  prefixForType,
-} from '../elements/elementDefaults';
-
-export interface NodeToleranceOptions {
-  tolerance?: number;
-}
+export interface NodeToleranceOptions { tolerance?: number;}
 
 /**
  * Default node matching tolerance in PDF page coordinates.
@@ -30,12 +21,9 @@ const DEFAULT_NODE_TOLERANCE = 8;
 /**
  * Return all existing node elements.
  */
-export function getNodes(
-  elements: StructuralElement[],
-): NodeElement[] {
+export function getNodes(elements: Shape[]): NodeElement[] {
   return elements.filter(
-    (element): element is NodeElement =>
-      element.type === 'node',
+    (element): element is NodeElement => element.type === 'node'
   );
 }
 
@@ -44,32 +32,21 @@ export function getNodes(
  */
 export function findNodeAtPoint(
   point: PagePoint,
-  elements: StructuralElement[],
-  options: NodeToleranceOptions = {},
+  elements: Shape[], // 修改为 Shape[]
+  options: NodeToleranceOptions = {}
 ): NodeElement | null {
-  const tolerance =
-    options.tolerance ?? DEFAULT_NODE_TOLERANCE;
-
+  const tolerance = options.tolerance ?? DEFAULT_NODE_TOLERANCE;
   const nodes = getNodes(elements);
-
   let bestNode: NodeElement | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
 
   for (const node of nodes) {
-    const distance = Math.hypot(
-      node.geometry.x - point.x,
-      node.geometry.y - point.y,
-    );
-
-    if (
-      distance <= tolerance &&
-      distance < bestDistance
-    ) {
+    const distance = Math.hypot(node.geometry.x - point.x, node.geometry.y - point.y);
+    if (distance <= tolerance && distance < bestDistance) {
       bestNode = node;
       bestDistance = distance;
     }
   }
-
   return bestNode;
 }
 
@@ -78,52 +55,33 @@ export function findNodeAtPoint(
  */
 export function findNearestNode(
   point: PagePoint,
-  elements: StructuralElement[],
+  elements: Shape[] // 修改为 Shape[]
 ): NodeElement | null {
   const nodes = getNodes(elements);
-
   let bestNode: NodeElement | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
 
   for (const node of nodes) {
-    const distance = Math.hypot(
-      node.geometry.x - point.x,
-      node.geometry.y - point.y,
-    );
-
+    const distance = Math.hypot(node.geometry.x - point.x, node.geometry.y - point.y);
     if (distance < bestDistance) {
       bestDistance = distance;
       bestNode = node;
     }
   }
-
   return bestNode;
 }
 
 /**
  * Generate the next node label.
  */
-export function ensureNodeLabel(
-  elements: StructuralElement[],
-): string {
+export function ensureNodeLabel(elements: Shape[]): string { // 修改为 Shape[]
   const used = new Set(
-    getNodes(elements).map(
-      (node) =>
-        node.label ||
-        node.properties.label,
-    ),
+    getNodes(elements).map((node) => node.label || node.properties.label)
   );
-
   let index = 1;
-
-  while (
-    used.has(
-      `N-${String(index).padStart(3, '0')}`,
-    )
-  ) {
+  while (used.has(`N-${String(index).padStart(3, '0')}`)) {
     index += 1;
   }
-
   return `N-${String(index).padStart(3, '0')}`;
 }
 
@@ -194,38 +152,23 @@ export function createNodeElement(params: {
  */
 export function resolveNode(
   point: PagePoint,
-  elements: StructuralElement[],
+  elements: Shape[], // 修改为 Shape[]
   params: {
     pageIndex: number;
     layerId: string;
     style?: Partial<ElementStyle>;
     tolerance?: number;
-  },
-): {
-  node: NodeElement;
-  isNew: boolean;
-} {
-  const existing =
-    findNodeAtPoint(
-      point,
-      elements,
-      {
-        tolerance:
-          params.tolerance ??
-          DEFAULT_NODE_TOLERANCE,
-      },
-    );
+  }
+): { node: NodeElement; isNew: boolean } {
+  const existing = findNodeAtPoint(point, elements, {
+    tolerance: params.tolerance ?? DEFAULT_NODE_TOLERANCE,
+  });
 
   if (existing) {
-    return {
-      node: existing,
-      isNew: false,
-    };
+    return { node: existing, isNew: false };
   }
 
-  const label =
-    ensureNodeLabel(elements);
-
+  const label = ensureNodeLabel(elements);
   return {
     node: createNodeElement({
       point,
@@ -258,39 +201,39 @@ export function nodePoint(
  */
 export function getConnectedMembers(
   nodeId: string,
-  elements: StructuralElement[],
+  elements: Shape[] // 修改为 Shape[]
 ): StructuralElement[] {
-  return elements.filter(
-    (element) => {
-      if (
-        element.type === 'node'
-      ) {
-        return false;
-      }
-
-      const p: any =
-        element.properties;
-
-      if (
-        element.type === 'column'
-      ) {
-        return p.nodeId === nodeId;
-      }
-
-      if (
-        element.type === 'beam' ||
-        element.type === 'wall' ||
-        element.type === 'portalFrame'
-      ) {
-        return (
-          p.startNodeId === nodeId ||
-          p.endNodeId === nodeId
-        );
-      }
-
+  return elements.filter((element): element is StructuralElement => {
+    // 排除 node 和所有 legacy shapes
+    if (
+      element.type === 'node' ||
+      element.type === 'point' ||
+      element.type === 'line' ||
+      element.type === 'polyline' ||
+      element.type === 'polygon' ||
+      element.type === 'rectangle' ||
+      element.type === 'circle' ||
+      element.type === 'text' ||
+      element.type === 'measure'
+    ) {
       return false;
-    },
-  );
+    }
+    
+    // 此时 TypeScript 知道 element 必然是 StructuralElement
+    const p = (element as StructuralElement).properties as any;
+    
+    if (element.type === 'column') {
+      return p.nodeId === nodeId;
+    }
+    if (
+      element.type === 'beam' ||
+      element.type === 'wall' ||
+      element.type === 'portalFrame'
+    ) {
+      return p.startNodeId === nodeId || p.endNodeId === nodeId;
+    }
+    return false;
+  });
 }
 
 /**

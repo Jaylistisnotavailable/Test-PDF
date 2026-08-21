@@ -5,6 +5,7 @@ import { distance, elementBounds, distanceToSegment } from '../geometry/geometry
 
 function lineSegments(e:StructuralElement):Array<[{x:number;y:number},{x:number;y:number}]>{
  switch(e.type){
+  case 'node': return [];
   case 'beam': return [[e.geometry.start,e.geometry.end]];
   case 'wall': return [[e.geometry.start,e.geometry.end]];
   case 'portalFrame': {const g=e.geometry;return [[g.start,{x:g.start.x,y:g.start.y+g.height}],[g.end,{x:g.end.x,y:g.end.y+g.height}],[{x:g.start.x,y:g.start.y+g.height},{x:g.end.x,y:g.end.y+g.height}]];}
@@ -29,6 +30,7 @@ const defaultSettings: SnapSettings = {
 
 const endpoints = (e:StructuralElement) => {
   switch(e.type) {
+    case 'node': return [{ x: e.geometry.x, y: e.geometry.y }];
     case 'column': return [{x:e.geometry.x,y:e.geometry.y},{x:e.geometry.x+e.geometry.width,y:e.geometry.y},
       {x:e.geometry.x+e.geometry.width,y:e.geometry.y+e.geometry.depth},{x:e.geometry.x,y:e.geometry.y+e.geometry.depth}];
     case 'beam':
@@ -38,6 +40,10 @@ const endpoints = (e:StructuralElement) => {
       return e.geometry.points;
     case 'portalFrame':
       return [e.geometry.start,e.geometry.end,{x:e.geometry.start.x,y:e.geometry.start.y+e.geometry.height},{x:e.geometry.end.x,y:e.geometry.end.y+e.geometry.height}];
+    case 'node':
+      return [{ x: e.geometry.x, y: e.geometry.y }];
+    default:
+      return [];
   }
 };
 
