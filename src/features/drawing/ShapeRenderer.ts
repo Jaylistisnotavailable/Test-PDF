@@ -10,20 +10,107 @@ function drawSelection(
   ctx: CanvasRenderingContext2D,
   e: StructuralElement,
 ) {
-  const b = elementBounds(e);
-
   ctx.save();
 
   ctx.strokeStyle = '#2563eb';
   ctx.lineWidth = 1;
   ctx.setLineDash([5, 4]);
 
-  ctx.strokeRect(
-    b.minX - 5,
-    b.minY - 5,
-    b.maxX - b.minX + 10,
-    b.maxY - b.minY + 10,
-  );
+  switch (e.type) {
+    case 'beam': {
+      const { start, end } = e.geometry;
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const len = Math.hypot(dx, dy);
+      const offset = 5; // A few pixels offset from the line
+
+      if (len < 1e-6) {
+        ctx.strokeRect(start.x - offset, start.y - offset, offset * 2, offset * 2);
+      } else {
+        // Normal vector perpendicular to beam
+        const nx = (-dy / len) * offset;
+        const ny = (dx / len) * offset;
+        // Tangent extension vector along beam
+        const tx = (dx / len) * offset;
+        const ty = (dy / len) * offset;
+
+        // Oriented bounding box tightly enclosing the inclined beam
+        ctx.beginPath();
+        ctx.moveTo(start.x - tx + nx, start.y - ty + ny);
+        ctx.lineTo(end.x + tx + nx, end.y + ty + ny);
+        ctx.lineTo(end.x + tx - nx, end.y + ty - ny);
+        ctx.lineTo(start.x - tx - nx, start.y - ty - ny);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'wall': {
+      const { start, end, thickness } = e.geometry;
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const len = Math.hypot(dx, dy);
+      const offset = (thickness || 1) / 2 + 5;
+      const ext = 5;
+
+      if (len < 1e-6) {
+        ctx.strokeRect(start.x - offset, start.y - offset, offset * 2, offset * 2);
+      } else {
+        const nx = (-dy / len) * offset;
+        const ny = (dx / len) * offset;
+        const tx = (dx / len) * ext;
+        const ty = (dy / len) * ext;
+
+        ctx.beginPath();
+        ctx.moveTo(start.x - tx + nx, start.y - ty + ny);
+        ctx.lineTo(end.x + tx + nx, end.y + ty + ny);
+        ctx.lineTo(end.x + tx - nx, end.y + ty - ny);
+        ctx.lineTo(start.x - tx - nx, start.y - ty - ny);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'column': {
+      const g = e.geometry;
+      const cx = g.x + g.width / 2;
+      const cy = g.y + g.depth / 2;
+      const hw = g.width / 2 + 5;
+      const hd = g.depth / 2 + 5;
+
+      ctx.translate(cx, cy);
+      ctx.rotate((g.rotation * Math.PI) / 180);
+      ctx.strokeRect(-hw, -hd, hw * 2, hd * 2);
+      break;
+    }
+
+    case 'slab': {
+      const pts = e.geometry.points;
+      if (pts.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'portalFrame': {
+      const b = elementBounds(e);
+      ctx.strokeRect(
+        b.minX - 5,
+        b.minY - 5,
+        b.maxX - b.minX + 10,
+        b.maxY - b.minY + 10,
+      );
+      break;
+    }
+  }
 
   ctx.restore();
 }
@@ -805,53 +892,90 @@ export function renderShape(
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 4]);
 
-    let bounds: {
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-    };
+    if (shape.type === 'line' || shape.type === 'measure') {
+      const [x1, y1, x2, y2] = shape.points;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      const offset = 5;
 
-    if (
-      'x' in shape &&
-      'width' in shape
-    ) {
-      bounds = {
-        x: shape.x,
-        y: shape.y,
-        w: shape.width,
-        h: shape.height,
-      };
-    } else if ('points' in shape) {
-      const xs = shape.points.filter(
-        (_, i) => i % 2 === 0,
-      );
+      if (len < 1e-6) {
+        ctx.strokeRect(x1 - offset, y1 - offset, offset * 2, offset * 2);
+      } else {
+        const nx = (-dy / len) * offset;
+        const ny = (dx / len) * offset;
+        const tx = (dx / len) * offset;
+        const ty = (dy / len) * offset;
 
-      const ys = shape.points.filter(
-        (_, i) => i % 2 === 1,
-      );
-
-      bounds = {
-        x: Math.min(...xs),
-        y: Math.min(...ys),
-        w: Math.max(...xs) - Math.min(...xs),
-        h: Math.max(...ys) - Math.min(...ys),
-      };
+        ctx.beginPath();
+        ctx.moveTo(x1 - tx + nx, y1 - ty + ny);
+        ctx.lineTo(x2 + tx + nx, y2 + ty + ny);
+        ctx.lineTo(x2 + tx - nx, y2 + ty - ny);
+        ctx.lineTo(x1 - tx - nx, y1 - ty - ny);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    } else if (shape.type === 'circle') {
+      ctx.beginPath();
+      ctx.arc(shape.x, shape.y, shape.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (shape.type === 'polygon' && shape.points.length >= 4) {
+      ctx.beginPath();
+      ctx.moveTo(shape.points[0], shape.points[1]);
+      for (let i = 2; i < shape.points.length; i += 2) {
+        ctx.lineTo(shape.points[i], shape.points[i + 1]);
+      }
+      ctx.closePath();
+      ctx.stroke();
     } else {
-      bounds = {
-        x: shape.x - 5,
-        y: shape.y - 5,
-        w: 10,
-        h: 10,
+      let bounds: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
       };
-    }
 
-    ctx.strokeRect(
-      bounds.x - 5,
-      bounds.y - 5,
-      bounds.w + 10,
-      bounds.h + 10,
-    );
+      if (
+        'x' in shape &&
+        'width' in shape
+      ) {
+        bounds = {
+          x: shape.x,
+          y: shape.y,
+          w: shape.width,
+          h: shape.height,
+        };
+      } else if ('points' in shape) {
+        const xs = shape.points.filter(
+          (_, i) => i % 2 === 0,
+        );
+
+        const ys = shape.points.filter(
+          (_, i) => i % 2 === 1,
+        );
+
+        bounds = {
+          x: Math.min(...xs),
+          y: Math.min(...ys),
+          w: Math.max(...xs) - Math.min(...xs),
+          h: Math.max(...ys) - Math.min(...ys),
+        };
+      } else {
+        bounds = {
+          x: shape.x - 5,
+          y: shape.y - 5,
+          w: 10,
+          h: 10,
+        };
+      }
+
+      ctx.strokeRect(
+        bounds.x - 5,
+        bounds.y - 5,
+        bounds.w + 10,
+        bounds.h + 10,
+      );
+    }
 
     ctx.restore();
   }
