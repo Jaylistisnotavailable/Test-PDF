@@ -558,7 +558,7 @@ export function ResizablePanel({
           top-0
           bottom-0
           z-40
-          w-[10px]
+          w-1
           cursor-col-resize
           touch-none
           ${
