@@ -216,7 +216,7 @@ export const drawingSlice = createSlice({
       if (a.payload !== 'select') s.selectedShapeIds = [];
     },
 
-    addShape: (s, a: PayloadAction<Omit<Shape, 'createdAt' | 'updatedAt'> & { id?: string }>) => {
+    addShape: (s, a: PayloadAction<Omit<Shape, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }>) => {
       const now = new Date().toISOString();
       const shape = {
         ...a.payload,
