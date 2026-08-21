@@ -1,5 +1,5 @@
 import { BaseTool, CanvasEvent, ToolContext } from './BaseTool';
-import { makeBase, ensureLabel } from './structuralToolUtils';
+import { makeBase, ensureLabel, getOrCreateNode } from './structuralToolUtils';
 import { getStructuralDefaults } from '../elements/elementDefaults';
 
 export class ColumnTool extends BaseTool {
@@ -9,6 +9,13 @@ export class ColumnTool extends BaseTool {
     const scale = ctx.getState().drawing.scaleDenominator;
     const d = getStructuralDefaults(scale, ctx.getState().drawing.scaleNumerator).column;
     const label = ensureLabel(ctx, 'column');
+
+    // 在柱子中心创建或获取节点
+    const center = { x: e.x, y: e.y };
+    const nodeResult = getOrCreateNode(ctx, center, 2);
+    if (nodeResult.isNew && nodeResult.shape) {
+      ctx.addShape(nodeResult.shape);
+    }
 
     ctx.addShape({
       ...makeBase(ctx, 'column', {
@@ -23,6 +30,7 @@ export class ColumnTool extends BaseTool {
         label,
         section: `${d.realWidth}×${d.realDepth}`,
         material: d.material,
+        nodeId: nodeResult.id, // 记录节点 ID
       },
     } as any);
   }

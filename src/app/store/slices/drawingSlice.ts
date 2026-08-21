@@ -216,15 +216,14 @@ export const drawingSlice = createSlice({
       if (a.payload !== 'select') s.selectedShapeIds = [];
     },
 
-    addShape: (s, a: PayloadAction<Omit<Shape, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    addShape: (s, a: PayloadAction<Omit<Shape, 'createdAt' | 'updatedAt'> & { id?: string }>) => {
       const now = new Date().toISOString();
       const shape = {
         ...a.payload,
-        id: nanoid(),
+        id: a.payload.id ?? nanoid(), // 优先使用传入的 id，否则自动生成
         createdAt: now,
         updatedAt: now,
       } as Shape;
-
       s.shapes.push(shape);
       s.selectedShapeIds = [shape.id];
     },

@@ -6,8 +6,19 @@ import type {Shape} from '@/app/store/slices/drawingSlice';
 import type {TreeNodeData,SortBy} from './types';
 import {structuralTypeLabel} from '@/features/drawing/elements/elementDefaults';
 
-const groups=['column','beam','wall','slab','portalFrame'] as const;
-const info=(s:Shape)=>{if('geometry'in s){const g:any=s.geometry;if(s.type==='column')return `${g.width}×${g.depth}`;if(s.type==='beam')return `${g.width}×${g.depth}`;if(s.type==='wall')return `${g.thickness} thick`;if(s.type==='slab')return `${(s as any).properties.thickness} thick`;return `${Math.round(Math.hypot(g.end.x-g.start.x,g.end.y-g.start.y))} × ${g.height}`;}return s.type;};
+const groups=['node','column','beam','wall','slab','portalFrame'] as const;
+const info = (s: Shape) => {
+  if ('geometry' in s) {
+    const g: any = s.geometry;
+    if (s.type === 'node') return `${Math.round(g.x)}, ${Math.round(g.y)}`;
+    if (s.type === 'column') return `${g.width}×${g.depth}`;
+    if (s.type === 'beam') return `${g.width}×${g.depth}`;
+    if (s.type === 'wall') return `${g.thickness} thick`;
+    if (s.type === 'slab') return `${(s as any).properties.thickness} thick`;
+    return `${Math.round(Math.hypot(g.end.x - g.start.x, g.end.y - g.start.y))} × ${g.height}`;
+  }
+  return s.type;
+};
 const selectShapes=(s:RootState)=>s.drawing.shapes;const selectPage=(s:RootState)=>s.pdf.currentPage;
 const make=()=>createSelector([selectShapes,selectPage,(_:RootState,p:{q:string;sort:SortBy})=>p],(shapes,page,{q,sort})=>{
  const pageShapes=shapes.filter(s=>s.pageIndex===page);
