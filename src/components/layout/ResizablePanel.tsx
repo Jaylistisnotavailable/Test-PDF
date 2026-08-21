@@ -150,7 +150,7 @@ export function ResizablePanel({
     useState(false);
 
   const isResizingRef = useRef(false);
-
+  const collapsePendingRef = useRef(false);
   /**
    * Save the last usable panel width.
    *
@@ -238,22 +238,6 @@ export function ResizablePanel({
         return;
       }
 
-      const panel = event.currentTarget;
-
-      void panel;
-
-      /**
-       * We calculate the width from the browser viewport.
-       *
-       * EditorWorkspace fills the available horizontal area,
-       * therefore:
-       *
-       * left panel:
-       *   width = mouseX - workspaceLeft
-       *
-       * right panel:
-       *   width = workspaceRight - mouseX
-       */
       const workspaceElement =
         document.querySelector(
           '[data-editor-workspace="true"]',
@@ -278,29 +262,37 @@ export function ResizablePanel({
           event.clientX;
       }
 
-      /**
-       * Collapse when dragged all the way to the edge.
-       *
-       * This check intentionally happens BEFORE minWidth.
-       */
-      if (
-        newWidth <= COLLAPSE_THRESHOLD
-      ) {
-        isResizingRef.current = false;
+      /*
+      * ---------------------------------------------------------
+      * Collapse zone
+      * ---------------------------------------------------------
+      *
+      * Do NOT collapse immediately.
+      *
+      * Just mark the resize as pending.
+      */
+      if (newWidth <= COLLAPSE_THRESHOLD) {
+        collapsePendingRef.current = true;
 
-        setIsResizing(false);
-
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-
-        onCollapse?.();
+        /*
+        * Keep the panel visually at minimum width while
+        * the pointer is still down.
+        *
+        * This prevents the panel from disappearing underneath
+        * the mouse before pointerup.
+        */
+        setWidth(minWidth);
 
         return;
       }
 
-      /**
-       * Normal resizing.
-       */
+      /*
+      * The mouse moved back away from the edge.
+      *
+      * Cancel pending collapse.
+      */
+      collapsePendingRef.current = false;
+
       const nextWidth = Math.min(
         maxWidth,
         Math.max(minWidth, newWidth),
@@ -311,7 +303,6 @@ export function ResizablePanel({
     [
       maxWidth,
       minWidth,
-      onCollapse,
       side,
     ],
   );
@@ -324,13 +315,35 @@ export function ResizablePanel({
       return;
     }
 
+    const shouldCollapse =
+      collapsePendingRef.current;
+
+    /*
+    * Reset drag state FIRST.
+    */
     isResizingRef.current = false;
+
+    collapsePendingRef.current = false;
 
     setIsResizing(false);
 
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
-  }, []);
+
+    /*
+    * Only collapse AFTER pointerup.
+    *
+    * This prevents the React layout from changing while the
+    * browser is still processing the drag pointer.
+    */
+    if (shouldCollapse) {
+      requestAnimationFrame(() => {
+        onCollapse?.();
+      });
+    }
+  }, [
+    onCollapse,
+  ]);
 
   /**
    * Global pointer listeners.
@@ -565,12 +578,7 @@ export function ResizablePanel({
       >
         {/* Visible divider */}
         <div
-          className={`
-            absolute
-            top-0
-            bottom-0
-            w-px
-            transition-colors
+          className={` absolute top-0 bottom-0  w-px  transition-colors
             ${
               side === 'left'
                 ? 'right-[4px]'
@@ -612,45 +620,16 @@ export function ResizablePanel({
             ${
               isResizing ||
               isHoveringDivider
-                ? 'opacity-100'
-                : 'opacity-0'
+                ? 'w-1 bg-accent/50 opacity-100'
+                : 'w-px bg-transparent'
             }
           `}
         >
-          <span className="
-            w-[2px]
-            h-[2px]
-            rounded-full
-            bg-muted-foreground
-          " />
-
-          <span className="
-            w-[2px]
-            h-[2px]
-            rounded-full
-            bg-muted-foreground
-          " />
-
-          <span className="
-            w-[2px]
-            h-[2px]
-            rounded-full
-            bg-muted-foreground
-          " />
-
-          <span className="
-            w-[2px]
-            h-[2px]
-            rounded-full
-            bg-muted-foreground
-          " />
-
-          <span className="
-            w-[2px]
-            h-[2px]
-            rounded-full
-            bg-muted-foreground
-          " />
+          <span className=" w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+          <span className=" w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+          <span className=" w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+          <span className=" w-[2px] h-[2px] rounded-full bg-muted-foreground" />
+          <span className=" w-[2px] h-[2px] rounded-full bg-muted-foreground" />
         </div>
       </div>
     </div>
