@@ -31,8 +31,9 @@ const defaultSettings: SnapSettings = {
 const endpoints = (e:StructuralElement) => {
   switch(e.type) {
     case 'node': return [{ x: e.geometry.x, y: e.geometry.y }];
-    case 'column': return [{x:e.geometry.x,y:e.geometry.y},{x:e.geometry.x+e.geometry.width,y:e.geometry.y},
-      {x:e.geometry.x+e.geometry.width,y:e.geometry.y+e.geometry.depth},{x:e.geometry.x,y:e.geometry.y+e.geometry.depth}];
+    case 'column': return [{ x: e.geometry.x + e.geometry.width / 2, 
+        y: e.geometry.y + e.geometry.depth / 2 
+      }];
     case 'beam':
     case 'wall':
       return [e.geometry.start,e.geometry.end];
