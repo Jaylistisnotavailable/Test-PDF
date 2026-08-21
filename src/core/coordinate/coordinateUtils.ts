@@ -1,5 +1,19 @@
 // src/core/coordinate/coordinateUtils.ts
 
+/**
+ * Coordinate conversion utilities.
+ *
+ * This module provides functions to convert between different coordinate systems used in the PDF viewer.
+ * The coordinate systems include:
+ * - Browser screen coordinates (ScreenPoint)
+ * - PDF page coordinates (PagePoint)
+ * - Canvas coordinates (CanvasPoint)
+ * - Engineering units (EngineeringPoint)
+ *
+ * The functions handle scaling, panning, and clamping to ensure accurate conversions.
+ *
+ * Note: The legacy functions are kept for compatibility with existing drawing code.
+ */
 import type {
   PagePoint,
   ScreenPoint,

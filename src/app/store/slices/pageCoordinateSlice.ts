@@ -1,15 +1,9 @@
 // src/app/store/slices/pageCoordinateSlice.ts
 
-import {
-  createSlice,
-  PayloadAction,
-} from '@reduxjs/toolkit';
-
+import { createSlice, PayloadAction} from '@reduxjs/toolkit';
 import type { RootState } from '../index';
 
-import type {
-  EngineeringUnit,
-} from '@/core/coordinate/engineeringScale';
+import type { EngineeringUnit} from '@/core/coordinate/engineeringScale';
 
 import {
   createDefaultPageCoordinateSystem,
@@ -18,10 +12,7 @@ import {
 } from '@/core/coordinate/pageCoordinateSystem';
 
 export interface PageCoordinateState {
-  pages: Record<
-    number,
-    PageCoordinateSystem
-  >;
+  pages: Record< number,  PageCoordinateSystem>;
 
   /**
    * When true, the next click on the PDF
