@@ -365,17 +365,29 @@ function drawBeam(
   ctx.lineTo(g.end.x, g.end.y);
   ctx.stroke();
 
-  // --- 新增：绘制梁截面信息 ---
-  if (options?.showSections) {
+  // --- 绘制梁的标签与截面信息 ---
+  // "Show Element Labels" 控制元素的编号/标签显示（优先显示自定义标签），
+  // "Show Element Sections" 控制基于尺寸的截面信息显示（当没有自定义标签或用户只想看尺寸时）。
+  {
     const midX = (g.start.x + g.end.x) / 2;
     const midY = (g.start.y + g.end.y) / 2;
     ctx.fillStyle = '#111827';
     ctx.font = '9px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    const sectionText =
-      e.label || `B ${Math.round(pageUnitsToMm(g.width || 0))}x${Math.round(pageUnitsToMm(g.depth || 0))}`;
-    ctx.fillText(sectionText, midX, midY - 4);
+
+    if (options?.showLabels && e.label) {
+      // 显示用户自定义的标签，使用强调颜色
+      ctx.fillStyle = '#2563eb';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(e.label, midX, midY - 4);
+    } else if (options?.showSections) {
+      // 显示截面尺寸信息（基于宽度/深度）
+      const sectionText = `B ${Math.round(pageUnitsToMm(g.width || 0))}x${Math.round(pageUnitsToMm(g.depth || 0))}`;
+      ctx.fillStyle = '#111827';
+      ctx.font = '9px sans-serif';
+      ctx.fillText(sectionText, midX, midY - 4);
+    }
   }
 
   ctx.restore();
@@ -439,6 +451,7 @@ function drawWall(
 function drawSlab(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'slab' }>,
+  options?: RenderOptions,
 ) {
   const pts = e.geometry.points;
 
@@ -487,6 +500,7 @@ function drawSlab(
 function drawPortalFrame(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'portalFrame' }>,
+  options?: RenderOptions,
 ) {
   const g = e.geometry;
 
@@ -656,8 +670,8 @@ export function renderShape(
 
   switch (shape.type) {
     case 'point': {
-      // --- 核心修改：确保节点显示为明显的粗圆点 ---
-      const pointRadius = Math.max(shape.radius || 14, 14); // 强制最小半径为 4
+      // --- 核心修改：允许控制节点尺寸，并提供合理的默认值 ---
+      const pointRadius = Math.max(typeof shape.radius === 'number' ? shape.radius : 4, 4); // 默认最小半径为 4
       ctx.fillStyle = shape.color || '#ef4444'; // 默认醒目的红色
       
       ctx.beginPath();
