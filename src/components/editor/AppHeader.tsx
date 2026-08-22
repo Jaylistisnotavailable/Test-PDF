@@ -1,6 +1,7 @@
 import React from 'react';
-import { FileText, Edit3, Eye, Wrench, Undo2, Redo2, Save, Download } from 'lucide-react';
+import { FileText, Undo2, Redo2, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DisplaySettingsDialog } from './DisplaySettingsDialog';
 
 export function AppHeader() {
   return (
@@ -14,7 +15,10 @@ export function AppHeader() {
         </div>
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
           {['File', 'Edit', 'View', 'Tools'].map((item) => (
-            <button key={item} className="px-3 py-1.5 rounded hover:bg-editor-hover hover:text-foreground transition-colors">
+            <button
+              key={item}
+              className="px-3 py-1.5 rounded hover:bg-editor-hover hover:text-foreground transition-colors"
+            >
               {item}
             </button>
           ))}
@@ -22,16 +26,9 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Undo (Ctrl+Z)">
-          <Edit3 className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Redo (Ctrl+Shift+Z)">
-          <Eye className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" title="Redo (Ctrl+Shift+Z)">
-          <Wrench className="w-4 h-4" />
-        </Button>
-        <div className="w-px h-4 bg-border mx-1" />
+        {/* 替换为显示设置对话框触发器 */}
+        <DisplaySettingsDialog />
+        
         <Button variant="ghost" size="icon" className="h-8 w-8" title="Undo (Ctrl+Z)">
           <Undo2 className="w-4 h-4" />
         </Button>

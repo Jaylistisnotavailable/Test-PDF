@@ -1,10 +1,13 @@
 import type { Shape } from '@/app/store/slices/drawingSlice';
 import type { StructuralElement } from './elements/elementTypes';
-import {
-  ELEMENT_COLORS,
-  pageUnitsToMm,
-} from './elements/elementDefaults';
+import { ELEMENT_COLORS, pageUnitsToMm } from './elements/elementDefaults';
 import { elementBounds } from './geometry/geometryUtils';
+
+// --- 新增：渲染配置选项接口 ---
+export interface RenderOptions {
+  showLabels?: boolean;
+  showSections?: boolean;
+}
 
 function drawSelection(
   ctx: CanvasRenderingContext2D,
@@ -301,14 +304,13 @@ function drawVerticalDimension(
 function drawColumn(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'column' }>,
+  options?: RenderOptions,
 ) {
   const g = e.geometry;
-
   const centerX = g.x + g.width / 2;
   const centerY = g.y + g.depth / 2;
 
   ctx.save();
-
   ctx.globalAlpha = e.style.opacity;
   ctx.strokeStyle = ELEMENT_COLORS.column;
   ctx.lineWidth = Math.max(0.75, e.style.strokeWidth);
@@ -318,63 +320,30 @@ function drawColumn(
   ctx.rotate((g.rotation * Math.PI) / 180);
   ctx.translate(-centerX, -centerY);
 
-  // Column fill
-  if (
-    e.style.fillColor &&
-    e.style.fillColor !== 'transparent'
-  ) {
+  if (e.style.fillColor && e.style.fillColor !== 'transparent') {
     ctx.fillStyle = e.style.fillColor;
-    ctx.globalAlpha =
-      e.style.fillOpacity ?? e.style.opacity;
-
-    ctx.fillRect(
-      g.x,
-      g.y,
-      g.width,
-      g.depth,
-    );
-
+    ctx.globalAlpha = e.style.fillOpacity ?? e.style.opacity;
+    ctx.fillRect(g.x, g.y, g.width, g.depth);
     ctx.globalAlpha = e.style.opacity;
   }
 
-  // Outer 90 x 90 rectangle
-  ctx.strokeRect(
-    g.x,
-    g.y,
-    g.width,
-    g.depth,
-  );
+  ctx.strokeRect(g.x, g.y, g.width, g.depth);
+  drawCenterMark(ctx, centerX, centerY, Math.max(2.5, Math.min(g.width, g.depth) * 0.8));
 
-  // Centre point and centre cross
-  drawCenterMark(
-    ctx,
-    centerX,
-    centerY,
-    Math.max(2.5, Math.min(g.width, g.depth) * 0.8),
-  );
-
-  // Dimension labels.
-  //
-  // Because the geometry is PDF page coordinates, convert
-  // it back to the real engineering dimension.
   const realWidth = pageUnitsToMm(g.width);
   const realDepth = pageUnitsToMm(g.depth);
 
-  drawHorizontalDimension(
-    ctx,
-    g.x,
-    g.x + g.width,
-    g.y - 6,
-    realWidth,
-  );
+  drawHorizontalDimension(ctx, g.x, g.x + g.width, g.y - 6, realWidth);
+  drawVerticalDimension(ctx, g.x + g.width + 4, g.y, g.y + g.depth, realDepth);
 
-  drawVerticalDimension(
-    ctx,
-    g.x + g.width + 4,
-    g.y,
-    g.y + g.depth,
-    realDepth,
-  );
+  // --- 新增：绘制柱编号 ---
+  if (options?.showLabels && e.label) {
+    ctx.fillStyle = '#2563eb';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(e.label, centerX, centerY);
+  }
 
   ctx.restore();
 }
@@ -382,24 +351,13 @@ function drawColumn(
 function drawBeam(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'beam' }>,
+  options?: RenderOptions,
 ) {
   const g = e.geometry;
-
   ctx.save();
-
   ctx.globalAlpha = e.style.opacity;
-
-  /**
-   * Beam is intentionally represented by a single line.
-   *
-   * This is different from the wall representation and avoids
-   * visually confusing a beam with a 190 mm wall.
-   */
   ctx.strokeStyle = ELEMENT_COLORS.beam;
-
-  // Keep beam visually thin regardless of its real 90 mm width.
   ctx.lineWidth = Math.max(1.0, e.style.strokeWidth);
-
   ctx.lineCap = 'butt';
 
   ctx.beginPath();
@@ -407,92 +365,73 @@ function drawBeam(
   ctx.lineTo(g.end.x, g.end.y);
   ctx.stroke();
 
+  // --- 新增：绘制梁截面信息 ---
+  if (options?.showSections) {
+    const midX = (g.start.x + g.end.x) / 2;
+    const midY = (g.start.y + g.end.y) / 2;
+    ctx.fillStyle = '#111827';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const sectionText =
+      e.label || `B ${Math.round(pageUnitsToMm(g.width || 0))}x${Math.round(pageUnitsToMm(g.depth || 0))}`;
+    ctx.fillText(sectionText, midX, midY - 4);
+  }
+
   ctx.restore();
 }
 
 function drawWall(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'wall' }>,
+  options?: RenderOptions,
 ) {
   const g = e.geometry;
-
-  const angle = Math.atan2(
-    g.end.y - g.start.y,
-    g.end.x - g.start.x,
-  );
-
-  const nx = Math.sin(angle) * g.thickness / 2;
-  const ny = -Math.cos(angle) * g.thickness / 2;
+  const angle = Math.atan2(g.end.y - g.start.y, g.end.x - g.start.x);
+  const nx = Math.sin(angle) * (g.thickness / 2);
+  const ny = -Math.cos(angle) * (g.thickness / 2);
 
   ctx.save();
-
   ctx.globalAlpha = e.style.opacity;
-
   ctx.strokeStyle = ELEMENT_COLORS.wall;
-
-  ctx.lineWidth = Math.max(
-    0.8,
-    e.style.strokeWidth,
-  );
-
+  ctx.lineWidth = Math.max(0.8, e.style.strokeWidth);
   ctx.lineJoin = 'miter';
 
-  // Wall outer rectangle
   ctx.beginPath();
-
-  ctx.moveTo(
-    g.start.x + nx,
-    g.start.y + ny,
-  );
-
-  ctx.lineTo(
-    g.end.x + nx,
-    g.end.y + ny,
-  );
-
-  ctx.lineTo(
-    g.end.x - nx,
-    g.end.y - ny,
-  );
-
-  ctx.lineTo(
-    g.start.x - nx,
-    g.start.y - ny,
-  );
-
+  ctx.moveTo(g.start.x + nx, g.start.y + ny);
+  ctx.lineTo(g.end.x + nx, g.end.y + ny);
+  ctx.lineTo(g.end.x - nx, g.end.y - ny);
+  ctx.lineTo(g.start.x - nx, g.start.y - ny);
   ctx.closePath();
 
-  if (
-    e.style.fillColor &&
-    e.style.fillColor !== 'transparent'
-  ) {
+  if (e.style.fillColor && e.style.fillColor !== 'transparent') {
     ctx.fillStyle = e.style.fillColor;
-    ctx.globalAlpha =
-      e.style.fillOpacity ?? e.style.opacity;
-
+    ctx.globalAlpha = e.style.fillOpacity ?? e.style.opacity;
     ctx.fill();
-
     ctx.globalAlpha = e.style.opacity;
   }
-
   ctx.stroke();
 
-  /**
-   * Wall centreline.
-   *
-   * The centreline makes a structural wall visually distinct
-   * from a beam while preserving the actual 190 mm wall width.
-   */
   ctx.strokeStyle = ELEMENT_COLORS.wallCenterline;
   ctx.lineWidth = 0.65;
   ctx.setLineDash([3, 2]);
-
   ctx.beginPath();
   ctx.moveTo(g.start.x, g.start.y);
   ctx.lineTo(g.end.x, g.end.y);
   ctx.stroke();
-
   ctx.setLineDash([]);
+
+  // --- 新增：绘制墙截面信息 ---
+  if (options?.showSections) {
+    const midX = (g.start.x + g.end.x) / 2;
+    const midY = (g.start.y + g.end.y) / 2;
+    ctx.fillStyle = '#111827';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const sectionText = e.label || `W ${Math.round(pageUnitsToMm(g.thickness || 0))}`;
+    ctx.fillText(sectionText, midX, midY - 4);
+  }
 
   ctx.restore();
 }
@@ -672,26 +611,23 @@ function drawStructural(
   ctx: CanvasRenderingContext2D,
   e: StructuralElement,
   selected: boolean,
+  options?: RenderOptions,
 ) {
   switch (e.type) {
     case 'column':
-      drawColumn(ctx, e);
+      drawColumn(ctx, e, options);
       break;
-
     case 'beam':
-      drawBeam(ctx, e);
+      drawBeam(ctx, e, options);
       break;
-
     case 'wall':
-      drawWall(ctx, e);
+      drawWall(ctx, e, options);
       break;
-
     case 'slab':
-      drawSlab(ctx, e);
+      drawSlab(ctx, e, options);
       break;
-
     case 'portalFrame':
-      drawPortalFrame(ctx, e);
+      drawPortalFrame(ctx, e, options);
       break;
   }
 
@@ -704,28 +640,14 @@ export function renderShape(
   ctx: CanvasRenderingContext2D,
   shape: Shape,
   isSelected: boolean,
+  options?: RenderOptions,
 ) {
-  /**
-   * Structural elements use the new structural renderer.
-   */
-  if (
-    'geometry' in shape &&
-    'style' in shape
-  ) {
-    drawStructural(
-      ctx,
-      shape as StructuralElement,
-      isSelected,
-    );
-
+  if ('geometry' in shape && 'style' in shape) {
+    drawStructural(ctx, shape as StructuralElement, isSelected, options);
     return;
   }
 
-  /**
-   * Legacy drawing elements.
-   */
   ctx.save();
-
   ctx.globalAlpha = shape.opacity;
   ctx.strokeStyle = shape.color;
   ctx.lineWidth = shape.strokeWidth;
@@ -733,19 +655,30 @@ export function renderShape(
   ctx.lineCap = 'round';
 
   switch (shape.type) {
-    case 'point':
-      ctx.fillStyle = shape.color;
-
+    case 'point': {
+      // --- 核心修改：确保节点显示为明显的粗圆点 ---
+      const pointRadius = Math.max(shape.radius || 14, 14); // 强制最小半径为 4
+      ctx.fillStyle = shape.color || '#ef4444'; // 默认醒目的红色
+      
       ctx.beginPath();
-      ctx.arc(
-        shape.x,
-        shape.y,
-        shape.radius,
-        0,
-        Math.PI * 2,
-      );
+      ctx.arc(shape.x, shape.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
+
+      // 添加白色描边，确保在任何背景色下都清晰可见
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // 如果启用了标签显示，且有 label，则绘制标签
+      if (options?.showLabels && shape.label) {
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(shape.label, shape.x + pointRadius + 3, shape.y - pointRadius);
+      }
       break;
+    }
 
     case 'line':
       ctx.beginPath();

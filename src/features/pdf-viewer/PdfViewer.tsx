@@ -17,6 +17,7 @@ export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage:
   const totalPages = useAppSelector((state) => state.pdf.totalPages);
   const rotation = useAppSelector((state) => state.pdf.pageRotation);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dimPdfBackground = useAppSelector((state) => state.ui.dimPdfBackground);  
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -92,6 +93,14 @@ export const PdfViewer = forwardRef<{ handleFitWidth: () => void; handleFitPage:
         >
           <div className="relative shadow-sm bg-white">
             <PdfCanvas document={document} />
+
+            {/* --- 新增：PDF 背景淡显遮罩层 --- */}
+            {/* z-[5] 确保它在 PDF (z-0) 之上，但在 AnnotationCanvas (z-10) 之下 */}
+            {/* pointer-events-none 确保它不会阻挡鼠标与下方标注 Canvas 的交互 */}
+            {dimPdfBackground && (
+              <div className="absolute inset-0 bg-white/60 pointer-events-none z-[5]" />
+            )}
+
             <AnnotationCanvas />
             <DimensionOverlay />
           </div>

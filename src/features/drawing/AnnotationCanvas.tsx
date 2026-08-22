@@ -60,6 +60,10 @@ export function AnnotationCanvas() {
   const [textInput, setTextInput] = useState('');
   const [canvasSizeVersion, setCanvasSizeVersion] = useState(0);
 
+  // 在组件内部添加状态读取
+  const showElementLabels = useAppSelector((state) => state.ui.showElementLabels);
+  const showElementSections = useAppSelector((state) => state.ui.showElementSections);
+
   /*
    * Make sure the current page has a
    * coordinate system.
@@ -160,18 +164,26 @@ export function AnnotationCanvas() {
         layers.filter((layer) => layer.visible).map((layer) => layer.id)
       );
 
+      // 在 useEffect 的渲染循环中，更新 renderShape 的调用：
       shapes.forEach((shape) => {
         if (visible.has(shape.layerId)) {
           renderShape(
             ctx,
             shape,
-            selectedShapes.some((selected) => selected.id === shape.id)
+            selectedShapes.some((selected) => selected.id === shape.id),
+            {
+              showLabels: showElementLabels,
+              showSections: showElementSections,
+            }
           );
         }
       });
 
       if (tempShape) {
-        renderShape(ctx, tempShape, false);
+        renderShape(ctx, tempShape, false, {
+          showLabels: showElementLabels,
+          showSections: showElementSections,
+        });
       }
 
       if (selectionRect) {
