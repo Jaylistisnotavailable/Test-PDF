@@ -20,6 +20,17 @@ function drawSelection(
   ctx.setLineDash([5, 4]);
 
   switch (e.type) {
+    case 'node': {
+        const { x, y } = e.geometry;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2; 
+        ctx.setLineDash([]); 
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, Math.PI * 2); // 选中时半径比正常稍大一点
+        ctx.stroke();
+        break;
+    }
+
     case 'beam': {
       const { start, end } = e.geometry;
       const dx = end.x - start.x;
@@ -299,6 +310,40 @@ function drawVerticalDimension(
   );
 
   ctx.restore();
+}
+
+function drawNode(
+    ctx: CanvasRenderingContext2D,
+    e: Extract<StructuralElement, { type: 'node' }>,
+    options?: RenderOptions,
+) {
+    const { x, y } = e.geometry;
+    // 设置节点半径为 6，确保比 beam 的线宽大，足够显眼
+    const nodeRadius = 6; 
+
+    ctx.save();
+    
+    // 1. 绘制醒目的红色实心圆
+    ctx.fillStyle = '#ef4444'; // 亮红色
+    ctx.beginPath();
+    ctx.arc(x, y, nodeRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 2. 添加白色描边，确保在深色背景或重叠线条上依然清晰可见
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    // 3. 如果启用了标签显示，且有 label (如 "N-001")，则绘制标签
+    if (options?.showLabels && e.label) {
+        ctx.fillStyle = '#2563eb'; // 蓝色标签
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(e.label, x + nodeRadius + 3, y - nodeRadius);
+    }
+    
+    ctx.restore();
 }
 
 function drawColumn(
@@ -628,6 +673,9 @@ function drawStructural(
   options?: RenderOptions,
 ) {
   switch (e.type) {
+    case 'node':
+      drawNode(ctx, e, options);
+      break;
     case 'column':
       drawColumn(ctx, e, options);
       break;
@@ -670,17 +718,24 @@ export function renderShape(
 
   switch (shape.type) {
     case 'point': {
-      // --- 核心修改：允许控制节点尺寸，并提供合理的默认值 ---
-      const pointRadius = Math.max(typeof shape.radius === 'number' ? shape.radius : 4, 4); // 默认最小半径为 4
-      ctx.fillStyle = shape.color || '#ef4444'; // 默认醒目的红色
-      
+      // --- 节点显示：明确使用红点并保持可配置半径 ---
+      const pointRadius = Math.max(typeof shape.radius === 'number' ? shape.radius : 6, 6); // 默认半径为 6 保持可见
+
+      // 先绘制白色底圈作为描边/背景以保证在任何线条之上都能看清（半径略大）
       ctx.beginPath();
+      ctx.fillStyle = '#ffffff';
+      ctx.arc(shape.x, shape.y, pointRadius + 1.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 绘制红色实心点
+      ctx.beginPath();
+      ctx.fillStyle = '#ef4444'; // 固定显眼的红色
       ctx.arc(shape.x, shape.y, pointRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 添加白色描边，确保在任何背景色下都清晰可见
+      // 细描边增强可读性
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1, pointRadius * 0.25);
       ctx.stroke();
 
       // 如果启用了标签显示，且有 label，则绘制标签

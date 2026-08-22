@@ -164,19 +164,35 @@ export function AnnotationCanvas() {
         layers.filter((layer) => layer.visible).map((layer) => layer.id)
       );
 
-      // 在 useEffect 的渲染循环中，更新 renderShape 的调用：
-      shapes.forEach((shape) => {
-        if (visible.has(shape.layerId)) {
-          renderShape(
-            ctx,
-            shape,
-            selectedShapes.some((selected) => selected.id === shape.id),
-            {
-              showLabels: showElementLabels,
-              showSections: showElementSections,
-            }
-          );
-        }
+      // 在 useEffect 的渲染循环中，使用两阶段渲染以确保节点 (point) 总是在最上层可见：
+      const visibleShapes = shapes.filter((s) => visible.has(s.layerId));
+
+      const nonPointShapes = visibleShapes.filter((s) => s.type !== 'point');
+      const pointShapes = visibleShapes.filter((s) => s.type === 'point');
+
+      nonPointShapes.forEach((shape) => {
+        renderShape(
+          ctx,
+          shape,
+          selectedShapes.some((selected) => selected.id === shape.id),
+          {
+            showLabels: showElementLabels,
+            showSections: showElementSections,
+          }
+        );
+      });
+
+      // 把点绘制在最后，保证它们不会被梁等线条覆盖
+      pointShapes.forEach((shape) => {
+        renderShape(
+          ctx,
+          shape,
+          selectedShapes.some((selected) => selected.id === shape.id),
+          {
+            showLabels: showElementLabels,
+            showSections: showElementSections,
+          }
+        );
       });
 
       if (tempShape) {
