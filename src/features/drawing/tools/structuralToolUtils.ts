@@ -33,7 +33,11 @@ export function makeBase(ctx: ToolContext, type: StructuralElementType, geometry
   } as any;
 }
 
-export function structuralDefaults(type: StructuralElementType, scaleDenominator: number, scaleNumerator = 1) {
+export function structuralDefaults(
+  type: StructuralElementType,
+  scaleDenominator: number,
+  scaleNumerator = 1
+) {
   if (type === 'node') return undefined;
   return getStructuralDefaults(scaleDenominator, scaleNumerator)[type];
 }
@@ -58,21 +62,26 @@ export interface NodeResult {
   id: string;
   isNew: boolean;
   shape?: any;
+  snappedPoint: { x: number; y: number }; // 新增：返回实际吸附后的坐标
 }
 
 export function getOrCreateNode(
   ctx: ToolContext,
   point: { x: number; y: number },
-  tolerance: number = 2
+  tolerance: number = 5 // 容差设为 5，提升吸附体验
 ): NodeResult {
   const state = ctx.getState();
   const nodes = state.drawing.shapes.filter((s: any) => s.type === 'node') as NodeElement[];
-  
+
   // 1. 查找容差范围内的现有节点
-  const existingNode = nodes.find(n => distance(n.geometry, point) <= tolerance);
+  const existingNode = nodes.find((n) => distance(n.geometry, point) <= tolerance);
 
   if (existingNode) {
-    return { id: existingNode.id, isNew: false };
+    return {
+      id: existingNode.id,
+      isNew: false,
+      snappedPoint: { x: existingNode.geometry.x, y: existingNode.geometry.y },
+    };
   }
 
   // 2. 若无，则准备一个新节点
@@ -87,5 +96,10 @@ export function getOrCreateNode(
     },
   } as any;
 
-  return { id: newId, isNew: true, shape };
+  return {
+    id: newId,
+    isNew: true,
+    shape,
+    snappedPoint: { x: point.x, y: point.y },
+  };
 }
