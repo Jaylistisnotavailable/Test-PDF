@@ -21,4 +21,5 @@ export abstract class BaseTool{
  abstract onMouseUp(e:CanvasEvent,ctx:ToolContext):void;
  onDblClick?(e:CanvasEvent,ctx:ToolContext):void;
  onKeyDown?(e:KeyboardEvent,ctx:ToolContext):void;
+ onCancel?(ctx: ToolContext): void; // <-- 新增：用于处理右键或强制取消绘制
 }

@@ -362,6 +362,19 @@ export function useCanvasEvents(
       tool.onKeyDown?.(event, getCtx());
     };
 
+    const handleContextMenu = (event: MouseEvent) => {
+      const currentTool = activeToolRef.current;
+      // 如果当前不是选择工具，则拦截右键，取消绘制并切换回选择工具
+      if (currentTool !== 'select') {
+        event.preventDefault(); // 阻止浏览器默认右键菜单
+        
+        const tool = toolInstances[currentTool] ?? toolInstances.select;
+        tool.onCancel?.(getCtx()); // 清理工具内部状态 (如 start) 和 tempShape
+        
+        dispatch(setActiveTool('select')); // 切换回选择工具
+      }
+    };
+
     // 更新初始鼠标样式
     const initialTool = toolInstances[activeToolRef.current] ?? toolInstances.select;
     canvas.style.cursor = originModeRef.current ? 'crosshair' : initialTool.cursor;
@@ -371,6 +384,7 @@ export function useCanvasEvents(
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseLeave);
     canvas.addEventListener('dblclick', handleDoubleClick);
+    canvas.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -379,6 +393,7 @@ export function useCanvasEvents(
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
       canvas.removeEventListener('dblclick', handleDoubleClick);
+      canvas.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
 
       // 组件卸载时清理 rAF

@@ -2,12 +2,15 @@ import { BaseTool, CanvasEvent, ToolContext } from './BaseTool';
 import { makeBase, ensureLabel, getOrCreateNode } from './structuralToolUtils';
 import { getStructuralDefaults } from '../elements/elementDefaults';
 import { nanoid } from '@reduxjs/toolkit';
+import { setActiveTool } from '@/app/store/slices/drawingSlice';
 
 export class BeamTool extends BaseTool {
   cursor = 'crosshair';
   private isDrawing = false;
   private lastPoint: { x: number; y: number } | null = null;
   private lastNodeId: string | null = null;
+
+private start: { x: number; y: number } | null = null;
 
   onMouseDown(e: CanvasEvent, ctx: ToolContext) {
     const rawEvent = e.rawEvent as MouseEvent;
@@ -74,8 +77,10 @@ export class BeamTool extends BaseTool {
 
   onKeyDown(e: KeyboardEvent, ctx: ToolContext) {
     if (e.key === 'Escape') {
-      this.reset();
+      // this.reset(); // <-- 取消 reset()，设置 start 为 null，清除临时形状，并切换到选择工具
+      this.start = null;
       ctx.setTempShape(null);
+      ctx.dispatch(setActiveTool('select')); // <-- 切换到选择状态，UI 会自动变蓝
     }
   }
 
@@ -129,5 +134,12 @@ export class BeamTool extends BaseTool {
     } as any;
 
     ctx.addShape(newShape);
+  }
+
+  // 3. 新增 onCancel，供右键事件调用
+  onCancel(ctx: ToolContext) {
+    this.start = null;
+    ctx.setTempShape(null);
+    ctx.dispatch(setActiveTool('select'));
   }
 }
