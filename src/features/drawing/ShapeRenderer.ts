@@ -569,8 +569,7 @@ function drawWall(
 // }
 
 function drawSlab(
-  ctx: CanvasRenderingContext2D,
-  e: Extract<StructuralElement, { type: 'slab' }>,
+ctx: CanvasRenderingContext2D, e: Extract<StructuralElement, { type: 'slab'; }>, options: RenderOptions | undefined,
 ) {
   const pts = e.geometry.points;
   if (!pts.length) return;
