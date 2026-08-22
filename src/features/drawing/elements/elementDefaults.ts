@@ -117,6 +117,7 @@ export const ELEMENT_COLORS = {
   wallCenterline: '#7c3aed',
   portalColumn: '#2563eb',
   portalBeam: '#dc2626',
+  slab: '#059669',
 } as const;
 
 export const prefixForType = (type: StructuralElementType): string => ({

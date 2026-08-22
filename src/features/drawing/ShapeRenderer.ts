@@ -101,12 +101,38 @@ function drawSelection(
     }
 
     case 'slab': {
+      // ✅ 新增：板被选中时，显示向内 offset 的虚线轮廓
       const pts = e.geometry.points;
-      if (pts.length > 0) {
+      if (pts.length >= 3) {
+        // 1. 计算多边形质心
+        let cx = 0, cy = 0;
+        for (const p of pts) {
+          cx += p.x;
+          cy += p.y;
+        }
+        cx /= pts.length;
+        cy /= pts.length;
+
+        // 2. 将每个顶点向质心方向收缩固定像素 (例如 6px)
+        const offset = 6;
+        const innerPts = pts.map(p => {
+          const dx = cx - p.x;
+          const dy = cy - p.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist === 0) return p;
+          const move = Math.min(offset, dist * 0.5); // 防止极小图形过度收缩
+          const factor = (dist - move) / dist;
+          return {
+            x: cx + dx * factor,
+            y: cy + dy * factor
+          };
+        });
+
+        // 3. 绘制向内收缩的虚线
         ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.moveTo(innerPts[0].x, innerPts[0].y);
+        for (let i = 1; i < innerPts.length; i++) {
+          ctx.lineTo(innerPts[i].x, innerPts[i].y);
         }
         ctx.closePath();
         ctx.stroke();
@@ -493,52 +519,86 @@ function drawWall(
   ctx.restore();
 }
 
+// function drawSlab(
+//   ctx: CanvasRenderingContext2D,
+//   e: Extract<StructuralElement, { type: 'slab' }>,
+//   options?: RenderOptions,
+// ) {
+//   const pts = e.geometry.points;
+
+//   if (!pts.length) {
+//     return;
+//   }
+
+//   ctx.save();
+
+//   ctx.globalAlpha = e.style.opacity;
+//   ctx.strokeStyle = e.style.color;
+//   ctx.lineWidth = e.style.strokeWidth;
+
+//   ctx.beginPath();
+
+//   ctx.moveTo(
+//     pts[0].x,
+//     pts[0].y,
+//   );
+
+//   pts.slice(1).forEach((p) => {
+//     ctx.lineTo(p.x, p.y);
+//   });
+
+//   ctx.closePath();
+
+//   if (
+//     e.style.fillColor &&
+//     e.style.fillColor !== 'transparent'
+//   ) {
+//     ctx.fillStyle = e.style.fillColor;
+
+//     ctx.globalAlpha =
+//       e.style.fillOpacity ?? e.style.opacity;
+
+//     ctx.fill();
+
+//     ctx.globalAlpha = e.style.opacity;
+//   }
+
+//   ctx.stroke();
+
+//   ctx.restore();
+// }
+
 function drawSlab(
   ctx: CanvasRenderingContext2D,
   e: Extract<StructuralElement, { type: 'slab' }>,
-  options?: RenderOptions,
 ) {
   const pts = e.geometry.points;
-
-  if (!pts.length) {
-    return;
-  }
+  if (!pts.length) return;
 
   ctx.save();
-
   ctx.globalAlpha = e.style.opacity;
-  ctx.strokeStyle = e.style.color;
+  
+  // ✅ 兜底使用专属颜色，防止旧数据无颜色
+  ctx.strokeStyle = e.style.color || ELEMENT_COLORS.slab;
   ctx.lineWidth = e.style.strokeWidth;
 
   ctx.beginPath();
-
-  ctx.moveTo(
-    pts[0].x,
-    pts[0].y,
-  );
-
+  ctx.moveTo(pts[0].x, pts[0].y);
   pts.slice(1).forEach((p) => {
     ctx.lineTo(p.x, p.y);
   });
-
   ctx.closePath();
 
-  if (
-    e.style.fillColor &&
-    e.style.fillColor !== 'transparent'
-  ) {
-    ctx.fillStyle = e.style.fillColor;
-
-    ctx.globalAlpha =
-      e.style.fillOpacity ?? e.style.opacity;
-
+  // ✅ 确保带有透明度的填充
+  const fillColor = e.style.fillColor || ELEMENT_COLORS.slab;
+  if (fillColor && fillColor !== 'transparent') {
+    ctx.fillStyle = fillColor;
+    ctx.globalAlpha = e.style.fillOpacity ?? 0.15;
     ctx.fill();
-
-    ctx.globalAlpha = e.style.opacity;
+    ctx.globalAlpha = e.style.opacity; // 恢复边框透明度
   }
 
   ctx.stroke();
-
   ctx.restore();
 }
 

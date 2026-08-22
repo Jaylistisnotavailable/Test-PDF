@@ -65,7 +65,8 @@ function isStructuralTool(tool: string): boolean {
     tool === 'column' ||
     tool === 'beam' ||
     tool === 'wall' ||
-    tool === 'portalFrame'
+    tool === 'portalFrame' ||
+    tool === 'slab'
   );
 }
 
